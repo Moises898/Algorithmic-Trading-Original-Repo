@@ -152,8 +152,8 @@ class App(customtkinter.CTk):
         
     def start_strategy(self):                
         self.symbol = self.main_frame.symbols_options.get()
-        self.risk = float(self.main_frame.risk_entry.get())
-        self.profit = float(self.main_frame.gain_entry.get())
+        self.risk = float(str(self.main_frame.risk_entry.get()).replace("%","")) / 100
+        self.profit = float(str(self.main_frame.gain_entry.get()).replace("%","")) / 100
         self.max_trades = int(self.main_frame.max_trades_entry.get())
         self.partial_close = self.main_frame.partial_close_options.get() == "Enable"
         self.dynamic_sl = self.main_frame.dynamic_SL_menu.get() == "Enable"

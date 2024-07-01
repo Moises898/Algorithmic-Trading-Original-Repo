@@ -12,11 +12,11 @@ def backtest_strategy(conn,n_periods,symbol,reverse,points,apply_volume_filter=F
     """
     FINAL_EMA_OPEN = EMA_OPEN_XAUUSD if symbol == "XAUUSD" else EMA_OPEN_EURUSD
     FINAL_EMA_LH = EMA_LH_XAUUSD if symbol == "XAUUSD" else EMA_LH_EURUSD
-    candles_lenght = n_periods * 4
+    candles_lenght = n_periods * 2
     if dataFrame is None:
         df_testing = conn.data_range(symbol,"M1",candles_lenght)
         # Emulate Live Trading 
-        start = (n_periods * 3) - 1  
+        start = n_periods + 1
         iterations = n_periods
     else:
         if dataFrame.shape[0] >= 200:

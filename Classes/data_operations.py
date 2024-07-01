@@ -199,14 +199,15 @@ def TRAILLING_STOP_FIBONACCI(s,order,tickets,conn,levels,profit,risk,pnl,flag_to
         tp1 = round(price_open + levels[23.6], decimal_places)
         tp2 = round(price_open + levels[50], decimal_places)  
         tp3 = round(price_open + (levels[50] + levels[23.6]), decimal_places)   
-        tp_flag = round(price_open + levels[61.8], decimal_places)                       
+        sl1 = round(price_open + levels[11.2], decimal_places) 
+        sl2 = round(price_open + levels[38.2], decimal_places)   
     else:
         tp1 = round(price_open - levels[23.6], decimal_places)    
         tp2 = round(price_open - levels[50], decimal_places)   
         tp3 = round(price_open - (levels[50] + levels[23.6]), decimal_places)            
-        tp_flag = round(price_open - levels[61.8], decimal_places)                            
-    # Define SL values to use once the tp are reached    
-    sl2 = tp1
+        sl1 = round(price_open - levels[11.2], decimal_places) 
+        sl2 = round(price_open - levels[38.2], decimal_places)   
+    # Define SL values to use once the tp are reached        
     tp1_triggered = False
     tp2_triggered = False
     sl1_triggered = False
@@ -247,7 +248,7 @@ def TRAILLING_STOP_FIBONACCI(s,order,tickets,conn,levels,profit,risk,pnl,flag_to
                 if order == 1 and current_price >= tp1 and not tp1_triggered:                
                     for ticket in tickets:
                         if ticket != 10019:
-                            modify(ticket,price_open,tp)
+                            modify(ticket,sl1,tp)
                     tp1_triggered = True
                 # TP2 -> BUY signals
                 elif order == 1 and current_price >= tp2 and not tp2_triggered:                                
@@ -259,7 +260,7 @@ def TRAILLING_STOP_FIBONACCI(s,order,tickets,conn,levels,profit,risk,pnl,flag_to
                 elif order == 0 and current_price <= tp1 and not tp1_triggered:                                
                     for ticket in tickets:
                         if ticket != 10019:
-                            modify(ticket,price_open,tp)                        
+                            modify(ticket,sl1,tp)                        
                     tp1_triggered = True
                 # TP2 -> SELL signals
                 elif order == 0 and current_price <= tp2 and not tp2_triggered:                                

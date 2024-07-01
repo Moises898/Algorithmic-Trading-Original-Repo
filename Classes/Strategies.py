@@ -147,8 +147,7 @@ def main_loop(object,conn,symbol_to_trade,partial_close,risk,target_profit,entri
                     38.2: .382 * difference,        
                     50: .5 * difference,
                     61.8: .618 * difference
-                }
-                #random_reverse = choice([True,True,False,False]) if symbol_to_trade == "XAUUSD" else choice([True,True,False,False,False])
+                }                
                 flag_randomForest = False
                 prediction_reverse = False
                 while True:
@@ -181,8 +180,7 @@ def main_loop(object,conn,symbol_to_trade,partial_close,risk,target_profit,entri
                 tickets_copy = []                 
                 if fibonacci and points_value < 100 and symbol_to_trade == "XAUUSD":
                         print("Position will be skipped")
-                        position = False
-                        break                                                           
+                        position = False                                                                                 
                 else:
                     while len(tickets) < entries_per_trade:                    
                         # Set SL and TP based in Fibonacci levels

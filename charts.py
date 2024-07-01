@@ -46,7 +46,7 @@ def plot_selected_trade(row):
                 end = idx
                 break            
 
-    all_data = pd.concat([previous_data,data_from_entry.iloc[:end+20]]).reset_index()    
+    all_data = pd.concat([previous_data,data_from_entry.iloc[:end+30]]).reset_index()    
     all_data['time'] = pd.to_datetime(all_data['time'], unit='s',utc=True).dt.tz_convert('America/Mexico_City')
     
     chart.set(all_data)     
@@ -93,19 +93,23 @@ def execute_backtest(connection,symbol,n_periods,points=100,automatic_points=Fal
     # Execute with custom parameteres
     operations, _ = backtest_strategy(connection,n_periods,symbol,reverse_entries,points,volume_filter,fibonacci=automatic_points,model=use_random_forest)     
     counters,results = analyze_results(operations)
-    win_rate = counters['tp_counter']  / sum(counters.values())
-    drop_open_trades = []
-    # Ask the user if want to display the open trades
-    for trade in operations.keys():
-        if trade in results.keys():
-            operations[trade]["result"] = results[trade]["result"]
-        else:
-            drop_open_trades.append(trade)
-            #operations[trade]["result"] = "OPEN"
-    # Drop the keys
-    for open_trade in drop_open_trades:
-        del operations[open_trade]
-    return operations,win_rate
+    try:
+        win_rate = counters['tp_counter']  / sum(counters.values())
+        drop_open_trades = []
+        # Ask the user if want to display the open trades
+        for trade in operations.keys():
+            if trade in results.keys():
+                operations[trade]["result"] = results[trade]["result"]
+            else:
+                drop_open_trades.append(trade)
+                #operations[trade]["result"] = "OPEN"
+        # Drop the keys
+        for open_trade in drop_open_trades:
+            del operations[open_trade]
+        return operations,win_rate        
+    except ZeroDivisionError:        
+        return None,None   
+    
 
 def generate_tables_of_trades(chart,results):
     # Table displaying the results
@@ -157,7 +161,7 @@ if __name__ == '__main__':
     password = "821AZ!$p5x"
     server = "demoUK-mt5.darwinex.com"    
     conn = MT5(user, password, server)
-    n_periods = 200    
+    n_periods = 100
     symbol = "XAUUSD"
     #best_settings = optimize_strategy(conn, n_periods, symbol)           
     # Start backtest to get the trades
@@ -169,17 +173,20 @@ if __name__ == '__main__':
                                         use_random_forest=True,#best_settings['randomForest'],
                                         volume_filter=False,
                                         reverse_entries=False
-                                        )    
-    # Initialize window    
-    chart = Chart(inner_width=.8,maximize=True,on_top=True,title="ATLAS - Backtesting")        
-    chart.layout(background_color='#090008', text_color='#FFFFFF', font_size=16,
-                 font_family='Helvetica')    
-    #chart.watermark('XAUUSD', color='rgba(180, 180, 240, 0.5)')
+                                        )   
+    if trades is None:
+        print("No entries") 
+    else:
+        # Initialize window    
+        chart = Chart(inner_width=.8,maximize=True,title="ATLAS - Backtesting")        
+        chart.layout(background_color='#090008', text_color='#FFFFFF', font_size=16,
+                    font_family='Helvetica')    
+        #chart.watermark('XAUUSD', color='rgba(180, 180, 240, 0.5)')
 
-    chart.crosshair(mode='normal', vert_color='#FFFFFF', vert_style='dotted',
-                    horz_color='#FFFFFF', horz_style='dotted')
-    chart.legend(visible=True, font_size=14)           
-    backtest_results = get_orders_from_backtesting(trades,symbol)                              
-    table,table_result = generate_tables_of_trades(chart,backtest_results)       
-    chart.precision(2 if symbol == "XAUUSD" else 4)
-    chart.show(block=True)   
+        chart.crosshair(mode='normal', vert_color='#FFFFFF', vert_style='dotted',
+                        horz_color='#FFFFFF', horz_style='dotted')
+        chart.legend(visible=True, font_size=14)           
+        backtest_results = get_orders_from_backtesting(trades,symbol)                              
+        table,table_result = generate_tables_of_trades(chart,backtest_results)       
+        chart.precision(2 if symbol == "XAUUSD" else 4)
+        chart.show(block=True)   

@@ -6,7 +6,7 @@ from PIL import Image
 def validate_numeric_input(action, value_if_allowed):
     # Validation function to allow only numeric characters
     if action == '1':  # insert
-        return all(char.isdigit() or char == '.' for char in value_if_allowed)
+        return all(char.isdigit() or char == '.' or char == "%" for char in value_if_allowed)
     return True
 
 def set_up_main_frame(frame):
@@ -248,6 +248,24 @@ def start_strategy_mt5_screen(frame):
             frame.lots.set(str(lots_value))
             frame.points.set(str(points(".")))
         
+    def format_percentage(value):
+        try:
+            value = float(value)
+            return f"{value}%"
+        except ValueError:
+            return value
+    
+    def on_risk_change(event):
+        current_value = frame.main_frame.risk_entry.get().replace("%", "")
+        formatted_value = format_percentage(current_value)  
+        frame.main_frame.risk_entry.delete(0, 'end')
+        frame.main_frame.risk_entry.insert(0, formatted_value)
+    
+    def on_profit_change(event):
+        current_value = frame.main_frame.gain_entry.get().replace("%", "")  
+        formatted_value = format_percentage(current_value)  
+        frame.main_frame.gain_entry.delete(0, 'end')
+        frame.main_frame.gain_entry.insert(0, formatted_value)
         
     PADX = (0,40)
     PADY = 2.5
@@ -255,9 +273,9 @@ def start_strategy_mt5_screen(frame):
     symbols = connection.display_symbols(["EURUSD", "XAUUSD"], 30)
     
     # Define Tkinter variables to update the GUI
-    frame.risk = tk.StringVar(value=".01")
-    frame.target_profit = tk.StringVar(value=".01")
-    frame.max_trades = tk.StringVar(value="5")
+    frame.risk = tk.StringVar(value="0.5%")
+    frame.target_profit = tk.StringVar(value="0.5%")
+    frame.max_trades = tk.StringVar(value="8")
     frame.balance = connection.account_details().balance   
     lots_value = 0.01 if frame.balance < 1000 else round((frame.balance / 10_000) * .10, 2)
     points = lambda x: TARGET_POINTS_XAUUSD if x == "XAUUSD" else TARGET_POINTS_EURUSD
@@ -300,7 +318,8 @@ def start_strategy_mt5_screen(frame):
         frame.main_frame.risk_entry = customtkinter.CTkEntry(frame.main_frame,
                                                                             placeholder_text="% Risk")
         frame.main_frame.risk_entry.configure(validate='key', validatecommand=(frame.register(validate_numeric_input), '%d', '%S'))
-        frame.main_frame.risk_entry.grid(row=4, column=1, padx=PADX, pady=PADY, sticky="ew")        
+        frame.main_frame.risk_entry.grid(row=4, column=1, padx=PADX, pady=PADY, sticky="ew")  
+        frame.main_frame.risk_entry.bind("<Return>", on_risk_change)      
         # Profit
         frame.main_frame.gain = customtkinter.CTkLabel(frame.main_frame, text="% Profit:",
                                                                         anchor="e")
@@ -308,7 +327,8 @@ def start_strategy_mt5_screen(frame):
         frame.main_frame.gain_entry = customtkinter.CTkEntry(frame.main_frame,
                                                                             placeholder_text="Expected Profit Percentage")
         frame.main_frame.gain_entry.configure(validate='key', validatecommand=(frame.register(validate_numeric_input), '%d', '%S'))
-        frame.main_frame.gain_entry.grid(row=5, column=1, padx=PADX, pady=PADY, sticky="ew")        
+        frame.main_frame.gain_entry.grid(row=5, column=1, padx=PADX, pady=PADY, sticky="ew")  
+        frame.main_frame.gain_entry.bind("<Return>", on_profit_change)         
         # Max entries
         frame.main_frame.max_trades = customtkinter.CTkLabel(frame.main_frame,
                                                                             text="Max Trades:", anchor="e")

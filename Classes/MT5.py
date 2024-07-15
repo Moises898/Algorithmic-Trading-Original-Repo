@@ -172,16 +172,17 @@ class MT5:
         deviation = 20
                         
         price = mt5.symbol_info_tick(symbol).ask if operation == 1 else  mt5.symbol_info_tick(symbol).bid
+        decimal_places = len(str(price).split(".")[1])        
         # Open position based on points
-        if type(points) is int:
+        if type(points) is int:            
             request = {
                 "action": mt5.TRADE_ACTION_DEAL,
                 "symbol": symbol,
                 "volume": lot,     
                 "type": mt5.ORDER_TYPE_BUY if operation == 1 else  mt5.ORDER_TYPE_SELL,
                 "price": price,
-                "tp": price + (points) * point if operation == 1 else price - (points) * point,
-                "sl": price - (points) * point if operation == 1 else price + (points) * point,
+                "tp": price + (points * point) if operation == 1 else price - (points * point),
+                "sl": round(price - ((points / 2) * point),decimal_places) if operation == 1 else round(price + ((points / 2) * point),decimal_places),
                 "deviation": deviation,
                 #"magic": 234000,
                 "comment": comment,

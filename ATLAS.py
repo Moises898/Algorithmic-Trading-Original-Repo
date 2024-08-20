@@ -148,23 +148,38 @@ class App(customtkinter.CTk):
                             title="Connection Failed",
                             message_1="Please verify next things before trying to connect again:",
                             message_2=f"-Make sure you have installed MT5 in your computer.\n-Valid credentials from a MT5 account.\n-Internet connection.\n-If your problem persist please contact us for assistance.\n{e}",
-                            command_to_trigger=self.back_main_screen_event)        
+                            command_to_trigger=self.back_main_screen_event)            
         
-    def start_strategy(self):                
+    def start_strategy(self):                   
         self.symbol = self.main_frame.symbols_options.get()
         self.risk = float(str(self.main_frame.risk_entry.get()).replace("%","")) / 100
         self.profit = float(str(self.main_frame.gain_entry.get()).replace("%","")) / 100
         self.max_trades = int(self.main_frame.max_trades_entry.get())
         self.partial_close = self.main_frame.partial_close_options.get() == "Enable"
-        self.dynamic_sl = self.main_frame.dynamic_SL_menu.get() == "Enable"
-        self.reverse = True #self.main_frame.reverse_menu.get() == "Enable"    
+        self.dynamic_sl = self.main_frame.dynamic_SL_menu.get() == "Enable"        
         self.positions_entry = int(self.main_frame.positions_entry.get())    
         self.points = round(int(self.main_frame.points_entry.get()),2)        
         self.lots = float(self.main_frame.lots_entry.get())  
         self.fibonacci = self.main_frame.fibonacci_options.get() == "Enable"
         if self.stop_thread_flag.is_set():
             self.stop_thread_flag.clear()
-        self.close_postions_flag = threading.Event()
+        self.close_postions_flag = threading.Event()             
+        periods = 500                                   
+        # while True:
+        #     if self.symbol == "XAUUSD":
+        #         operations,_ = backtest_strategy(self.connection,periods,self.symbol,False,self.points,fibonacci=self.fibonacci,model=False)            
+        #     else:
+        #         operations,_ = backtest_strategy(self.connection,periods,self.symbol,False,45,fibonacci=False,model=False)            
+        #     _,trades = analyze_results(operations)
+        #     if len(trades) > 10:
+        #         self.X, self.y = format_data_to_train_model(operations,trades,self.symbol)
+        #         recent = train_random_forest(self.X,self.y)
+        #         self.models_combined = ensemble_models(recent,self.X,self.y)
+        #         self.models_combined.fit(self.X,self.y)
+        #         break
+        #     else:
+        #         print("Duplicating")
+        #         periods = periods * 2 
         # Create new thread with the strategy        
         self.strategy_thread = threading.Thread(target=main_loop,
                                                 args=(self,
@@ -181,13 +196,14 @@ class App(customtkinter.CTk):
                                                       self.lots,
                                                       True,
                                                       self.dynamic_sl,
-                                                      self.reverse,
-                                                      self.fibonacci                                                    
+                                                      True,
+                                                      self.fibonacci
+                                                      #self.models_combined
                                                       ))             
-        
+                
         strategy_running_screen(self)       
                  
-    def start_backtest(self):
+    def start_backtest(self):        
         self.symbol = self.main_frame.symbols_options.get()        
         # Default value
         self.reverse = True       

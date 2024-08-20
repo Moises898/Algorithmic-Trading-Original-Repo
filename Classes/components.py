@@ -270,14 +270,14 @@ def start_strategy_mt5_screen(frame):
     PADX = (0,40)
     PADY = 2.5
     connection = frame.connection    
-    symbols = connection.display_symbols(["EURUSD", "XAUUSD"], 30)
+    symbols = connection.display_symbols(["EURUSD", "XAUUSD"], 50)
     
     # Define Tkinter variables to update the GUI
     frame.risk = tk.StringVar(value="0.5%")
     frame.target_profit = tk.StringVar(value="0.5%")
     frame.max_trades = tk.StringVar(value="8")
     frame.balance = connection.account_details().balance   
-    lots_value = 0.01 if frame.balance < 1000 else round((frame.balance / 10_000) * .10, 2)
+    lots_value = 0.01 if frame.balance <= 1000 else round((frame.balance / 10_000) * .10, 2)
     points = lambda x: TARGET_POINTS_XAUUSD if x == "XAUUSD" else TARGET_POINTS_EURUSD
     frame.points = tk.StringVar(value=str(points("."))) 
     frame.lots = tk.StringVar(value=str(lots_value))

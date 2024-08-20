@@ -3,8 +3,8 @@ from Classes.data_operations import *
 from time import sleep
 import customtkinter
 from datetime import date
-from random import choice,randint
-from Classes.randomForest import inputs_for_random_forest,get_prediction
+from random import randint
+from Classes.randomForest import inputs_for_random_forest,get_prediction,inputs_for_random_forest_v2
 # Parameteters for strategy (not modify)
 OFFSET = 2
 CHOP_LIMIT = 50.24
@@ -42,12 +42,13 @@ def export_signals(df,result,order,reverse,points,symbol,date_for_df,i):
     df["ID"] = symbol+"-"+date_for_df+"-"+str(points)+"live"+"-"+str(i)+str(id_rand)
     return df,id_rand
 
-def main_loop(object,conn,symbol_to_trade,partial_close,risk,target_profit,entries_per_trade,max_trades,timeFrame,flag_session,flag_position,points,lots,both_directions=False,dynamic_sl=True,randomForest=False,fibonacci=False):
+def main_loop(object,conn,symbol_to_trade,partial_close,risk,target_profit,entries_per_trade,max_trades,timeFrame,flag_session,flag_position,points,lots,both_directions=False,dynamic_sl=True,randomForest=False,fibonacci=False,version_rf=None):
     point = mt5.symbol_info(symbol_to_trade).point   
     points_value = 0
     TRADES_SIGNALS = []    
     id = 0
     date_for_df = str(date.today())
+    fibonacci_depth = 10
     fibonacci_levels = dict()
     FINAL_EMA_OPEN = EMA_OPEN_XAUUSD if symbol_to_trade == "XAUUSD" else EMA_OPEN_EURUSD
     FINAL_EMA_LH = EMA_LH_XAUUSD if symbol_to_trade == "XAUUSD" else EMA_LH_EURUSD
@@ -117,10 +118,10 @@ def main_loop(object,conn,symbol_to_trade,partial_close,risk,target_profit,entri
             last_balance = conn.account_details().equity
             check_balance = False            
             if fibonacci:    
-                df,id = export_signals(M1,result,entry,prediction_reverse,int(points_value),symbol_to_trade,date_for_df,id)                                            
+                df,id = export_signals(M1,result,entry,False,int(points_value),symbol_to_trade,date_for_df,id)                                            
                 TRADES_SIGNALS.append(df) 
             else:
-                df,id = export_signals(M1,result,entry,prediction_reverse,points,symbol_to_trade,date_for_df,id)
+                df,id = export_signals(M1,result,entry,False,points,symbol_to_trade,date_for_df,id)
                 TRADES_SIGNALS.append(df)         
         # Close the session if profit/loss or max entries was reached
         if (total_profit >= target_profit) or (total_profit <= risk):
@@ -137,9 +138,21 @@ def main_loop(object,conn,symbol_to_trade,partial_close,risk,target_profit,entri
         # Avoid open positions when the profit/risk was acheived
         if not positions_open(conn,symbol_to_trade) and (total_profit <= target_profit) or (total_profit >= risk):
             # Open positions if the stratgy detects entries            
-            position, entry = EMA_CROSSING(df=M1,offset= OFFSET, ema_open=FINAL_EMA_OPEN,ema_period= FINAL_EMA_LH,reverse=False)        
-            if position:                 
-                lowest,highest = Technical(M1).LOWEST_AND_HIGHEST(10) 
+            position, entry = EMA_CROSSING(df=M1,offset= OFFSET, ema_open=FINAL_EMA_OPEN,ema_period= FINAL_EMA_LH,reverse=False)  
+            if randomForest:
+                data = inputs_for_random_forest_v2(M1,symbol_to_trade,points_value)  
+                entry_from_model = get_prediction(data,'predict_entries_model')      
+                # If the random forest was enabled compare the signals          
+                if entry != 2 and entry_from_model != entry:  
+                    # Determine the entry by a trendline by the same depth from the fibonacci
+                    trend = Technical(M1).TREND_BY_TRENDLINE(fibonacci_depth)  
+                    if trend == entry:
+                        print(f"Normal entry will be opened {entry}")
+                    else:      
+                        print("Entry will be reversed, original entry", entry)
+                        entry = entry_from_model
+            if position:                     
+                lowest,highest = Technical(M1).LOWEST_AND_HIGHEST(fibonacci_depth) 
                 difference = abs(highest - lowest)
                 fibonacci_levels = {
                     11.2: .112*difference,
@@ -147,44 +160,29 @@ def main_loop(object,conn,symbol_to_trade,partial_close,risk,target_profit,entri
                     38.2: .382 * difference,        
                     50: .5 * difference,
                     61.8: .618 * difference
-                }                
-                flag_randomForest = False
-                prediction_reverse = False
-                while True:
-                    if entry == 1:
-                        print("****************** BUY ******************")
-                        decimal_places = len(str(mt5.symbol_info_tick(symbol_to_trade).ask).split(".")[1])
-                        entry_price = mt5.symbol_info_tick(symbol_to_trade).ask
-                        sl = round(entry_price - fibonacci_levels[23.6], decimal_places)
-                        tp = round(entry_price + fibonacci_levels[61.8], decimal_places)
-                    else:
-                        print("****************** SELL ******************")   
-                        decimal_places = len(str(mt5.symbol_info_tick(symbol_to_trade).bid).split(".")[1])
-                        entry_price = mt5.symbol_info_tick(symbol_to_trade).bid
-                        sl = round(entry_price + fibonacci_levels[23.6], decimal_places)
-                        tp = round(entry_price - fibonacci_levels[61.8], decimal_places)   
-                    points_value = int((max([tp,entry_price]) - min([tp,entry_price])) * (100 if symbol_to_trade == "XAUUSD" else 100_000))                                                         
-                    # If randomForest is active
-                    if randomForest and not flag_randomForest:                          
-                        data = inputs_for_random_forest(M1,entry,symbol_to_trade,points_value)  
-                        prediction =  get_prediction(data)
-                        if prediction:
-                            print("\tReversed by randomForest")
-                            entry = 0 if entry == 1 else 1                            
-                            prediction_reverse = prediction
-                            #sleep(3)
-                        flag_randomForest = True
-                    else:
-                        break
+                }                            
+                if entry == 1:
+                    print("****************** BUY ******************")
+                    decimal_places = len(str(mt5.symbol_info_tick(symbol_to_trade).ask).split(".")[1])
+                    entry_price = mt5.symbol_info_tick(symbol_to_trade).ask
+                    sl = round(entry_price - fibonacci_levels[23.6], decimal_places)
+                    tp = round(entry_price + fibonacci_levels[61.8], decimal_places)
+                else:
+                    print("****************** SELL ******************")   
+                    decimal_places = len(str(mt5.symbol_info_tick(symbol_to_trade).bid).split(".")[1])
+                    entry_price = mt5.symbol_info_tick(symbol_to_trade).bid
+                    sl = round(entry_price + fibonacci_levels[23.6], decimal_places)
+                    tp = round(entry_price - fibonacci_levels[61.8], decimal_places)   
+                    points_value = int((max([tp,entry_price]) - min([tp,entry_price])) * (100 if symbol_to_trade == "XAUUSD" else 100_000))                                                                             
                 tickets = [] 
                 tickets_copy = []                 
-                if fibonacci and points_value < 100 and symbol_to_trade == "XAUUSD":
+                if fibonacci and points_value < 60 and symbol_to_trade == "XAUUSD":
                         print("Position will be skipped")
                         position = False                                                                                 
                 else:
                     while len(tickets) < entries_per_trade:                    
                         # Set SL and TP based in Fibonacci levels
-                        if fibonacci:                            
+                        if fibonacci and symbol_to_trade == "XAUUSD":                            
                             object.points = str(points_value)
                             ticket = conn.open_position(symbol_to_trade, entry, lots,[sl,tp])
                         # Set  SL and TP with user inputs

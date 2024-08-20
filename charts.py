@@ -3,7 +3,6 @@ from Classes.data_operations import *
 from Classes.Strategies import *
 from Classes.backtest import *
 from lightweight_charts import Chart
-import pytz
 
 operation_line = None
 id_mapping = {}
@@ -161,14 +160,14 @@ if __name__ == '__main__':
     password = "821AZ!$p5x"
     server = "demoUK-mt5.darwinex.com"    
     conn = MT5(user, password, server)
-    n_periods = 100
-    symbol = "XAUUSD"
+    n_periods = 1000
+    symbol = "EURUSD"
     #best_settings = optimize_strategy(conn, n_periods, symbol)           
     # Start backtest to get the trades
     trades, win_rate = execute_backtest(connection=conn,
                                         symbol=symbol,
                                         n_periods=n_periods,
-                                        points= 400,#best_settings['best_points'],
+                                        points= 45,#best_settings['best_points'],
                                         automatic_points=True,#best_settings['fibonnaci_used'],
                                         use_random_forest=True,#best_settings['randomForest'],
                                         volume_filter=False,

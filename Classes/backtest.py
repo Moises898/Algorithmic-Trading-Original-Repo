@@ -2,7 +2,6 @@ from Classes.data_operations import *
 from Classes.Strategies import *
 import numpy as np
 from Classes.randomForest import *
-from lightweight_charts import Chart
 
 DEFAULT_RANGE = lambda x:  range(100, 1200, 100) if x == "XAUUSD" else range(40, 100, 5)
 
@@ -11,18 +10,21 @@ def backtest_strategy(conn,n_periods,symbol,reverse,points,apply_volume_filter=F
         Backtest the strategy to detect entries in the past, the method will return a dictionary with the entry price and the operation type (BUY/SELL)
     """
     FINAL_EMA_OPEN = EMA_OPEN_XAUUSD if symbol == "XAUUSD" else EMA_OPEN_EURUSD
-    FINAL_EMA_LH = EMA_LH_XAUUSD if symbol == "XAUUSD" else EMA_LH_EURUSD
-    candles_lenght = n_periods * 2
+    FINAL_EMA_LH = EMA_LH_XAUUSD if symbol == "XAUUSD" else EMA_LH_EURUSD    
     if dataFrame is None:
+        candles_lenght = n_periods + 500
         df_testing = conn.data_range(symbol,"M1",candles_lenght)
         # Emulate Live Trading 
-        start = n_periods + 1
+        start = 499
         iterations = n_periods
     else:
         if dataFrame.shape[0] >= 200:
             df_testing = dataFrame
-            start = 101
+            start = 99
             iterations = (dataFrame.shape[0] - start)
+        else:
+            print("Rows need to be grater or equal to 200")
+            return None,None
     df_testing[["Sell","Buy","SL","TP","SL1","TP1"]] = np.nan
     adjusted_points = points * mt5.symbol_info(symbol).point   
     final_points = points 
@@ -31,87 +33,91 @@ def backtest_strategy(conn,n_periods,symbol,reverse,points,apply_volume_filter=F
     # Emulate Live Trading     
     index_to_continue = 0   
     trade_open = False
-    for i in range(iterations):        
-        df_for_strategy = df_testing.iloc[start-100:start]                             
-        # Simulate entries
-        position, entry = EMA_CROSSING(df=df_for_strategy,offset= OFFSET, ema_open=FINAL_EMA_OPEN,ema_period= FINAL_EMA_LH,reverse=reverse,volume_filter=apply_volume_filter,show=False)                                                                           
-        if position and not trade_open:              
-            ####
-            flag_randomForest = False            
-            while True:
-                # Update the value where signal is generated 
-                if entry == 0:
-                    column = "Sell"
+    for i in range(iterations-1):    
+        try:    
+            df_for_strategy = df_testing.iloc[start-100:start]                             
+            # Simulate entries
+            position, entry = EMA_CROSSING(df=df_for_strategy,offset= OFFSET, ema_open=FINAL_EMA_OPEN,ema_period= FINAL_EMA_LH,reverse=reverse,volume_filter=apply_volume_filter,show=False)
+            if position and not trade_open:              
+                ####
+                flag_randomForest = False            
+                while True:
+                    # Update the value where signal is generated 
+                    if entry == 0:
+                        column = "Sell"
+                    else:
+                        column = "Buy"
+                    # Entry price
+                    prices = df_testing[column].values                  
+                    prices[start] = open_prices[start]
+                    df_testing[column] = prices                 
+                    # Calculate SL and TP
+                    if fibonacci:
+                        lowest,highest = Technical(df_for_strategy).LOWEST_AND_HIGHEST(10)                     
+                        difference = abs(highest - lowest)
+                        fibonacci_levels = {
+                            23.6: .236 * difference,
+                            38.2: .382 * difference,
+                            50: .5 * difference,
+                            61.8: .618 * difference
+                        }                                
+                        if entry == 1:                                                        
+                            sl = prices[start] - fibonacci_levels[23.6]
+                            tp1 = prices[start] + fibonacci_levels[50]
+                            tp = prices[start] + fibonacci_levels[61.8]                     
+                        else:                    
+                            sl = prices[start] + fibonacci_levels[23.6]
+                            tp1 = prices[start] - fibonacci_levels[50]
+                            tp = prices[start] - fibonacci_levels[61.8]                                    
+                    else:
+                        decimal_places = len(str(adjusted_points).split(".")[1])
+                        sl = df_testing["SL"].values              
+                        tp  = df_testing["TP"].values                    
+                        sl = round(prices[start] - (adjusted_points/2),decimal_places) if entry == 1 else round(prices[start] + (adjusted_points/2),decimal_places)
+                        #sl = prices[start] - adjusted_points if entry == 1 else prices[start] + adjusted_points
+                        tp = prices[start] + adjusted_points if entry == 1 else prices[start] - adjusted_points    
+                    points_value = int((max([tp,prices[start]]) - min([tp,prices[start]])) * (100 if symbol == "XAUUSD" else 100_000))                
+                    sl_value = abs(int((max([sl,prices[start]]) - min([sl,prices[start]])) * (100 if symbol == "XAUUSD" else 100_000)))
+                    # Use the model to check entries reversed
+                    if model and not flag_randomForest:
+                        data = inputs_for_random_forest(df_for_strategy,entry,symbol,points_value)  
+                        prediction =  get_prediction(data)
+                        if prediction:
+                            entry = 0 if entry == 1 else 1 
+                        flag_randomForest = True                                             
+                    else:
+                        break
+                ####                             
+                index_to_continue = i + candles_per_entry
+                trade_open = True                                                    
+                # Add SL and TP to the DF
+                df_testing["SL"] = sl
+                df_testing["TP"] = tp                       
+                # Strategy        
+                df_for_strategy["SL"] = sl
+                df_for_strategy["TP"] = tp            
+                df_to_plot = df_testing.iloc[start:] 
+                if fibonacci and (points_value < 100 and symbol == "XAUUSD") or (points_value < 40 and symbol == "EURUSD"):
+                        pass
+                        #print("Position will be skipped")                   
                 else:
-                    column = "Buy"
-                # Entry price
-                prices = df_testing[column].values  
-                prices[start] = open_prices[start]
-                df_testing[column] = prices 
-                # Calculate SL and TP
-                if fibonacci:
-                    lowest,highest = Technical(df_for_strategy).LOWEST_AND_HIGHEST(10) 
-                    #decimal_places = len(str(lowest).split(".")[1])
-                    difference = abs(highest - lowest)
-                    fibonacci_levels = {
-                        23.6: .236 * difference,
-                        38.2: .382 * difference,
-                        50: .5 * difference,
-                        61.8: .618 * difference
-                    }                                
-                    if entry == 1:                                                        
-                        sl = prices[start] - fibonacci_levels[23.6]
-                        tp1 = prices[start] + fibonacci_levels[50]
-                        tp = prices[start] + fibonacci_levels[61.8]                     
-                    else:                    
-                        sl = prices[start] + fibonacci_levels[23.6]
-                        tp1 = prices[start] - fibonacci_levels[50]
-                        tp = prices[start] - fibonacci_levels[61.8]                                    
-                else:
-                    sl = df_testing["SL"].values              
-                    tp  = df_testing["TP"].values                    
-                    sl = prices[start] - adjusted_points if entry == 1 else prices[start] + adjusted_points
-                    tp = prices[start] + adjusted_points if entry == 1 else prices[start] - adjusted_points    
-                points_value = int((max([tp,prices[start]]) - min([tp,prices[start]])) * (100 if symbol == "XAUUSD" else 100_000))                
-                sl_value = abs(int((max([sl,prices[start]]) - min([sl,prices[start]])) * (100 if symbol == "XAUUSD" else 100_000)))
-                # Use the model to check entries reversed
-                if model and not flag_randomForest:
-                    data = inputs_for_random_forest(df_for_strategy,entry,symbol,points_value)  
-                    prediction =  get_prediction(data)
-                    if prediction:
-                        entry = 0 if entry == 1 else 1 
-                    flag_randomForest = True                                             
-                else:
-                    break
-            ####                             
-            index_to_continue = i + candles_per_entry
-            trade_open = True                                                    
-            # Add SL and TP to the DF
-            df_testing["SL"] = sl
-            df_testing["TP"] = tp                       
-            # Strategy        
-            df_for_strategy["SL"] = sl
-            df_for_strategy["TP"] = tp            
-            df_to_plot = df_testing.iloc[start:] 
-            if fibonacci and (points_value < 100 and symbol == "XAUUSD") or (points_value < 35 and symbol == "EURUSD"):
-                    pass
-                    #print("Position will be skipped")                   
-            else:
-                operations[open_prices[start]] = {
-                "type": "SELL" if entry == 0 else "BUY",               
-                "df": df_to_plot,
-                "df_strategy": df_for_strategy,
-                "reversed": prediction if model else reverse,
-                "points": points_value,
-                "sl_points": sl_value
-                    }
-                # Reset the values of the original dataframe to keep just one value per df
-                df_testing[column] = np.nan  
-                df_testing[["SL","TP"]] = np.nan              
-        # When the loop iterate over candles_per_entry - 1 bars strategy will open new trades again
-        elif i == index_to_continue - 1:
-            trade_open = False
-        start += 1
+                    operations[open_prices[start]] = {
+                    "type": "SELL" if entry == 0 else "BUY",               
+                    "df": df_to_plot,
+                    "df_strategy": df_for_strategy,
+                    "reversed": prediction if model else reverse,
+                    "points": points_value,
+                    "sl_points": sl_value
+                        }
+                    # Reset the values of the original dataframe to keep just one value per df
+                    df_testing[column] = np.nan  
+                    df_testing[["SL","TP"]] = np.nan              
+            # When the loop iterate over candles_per_entry - 1 bars strategy will open new trades again
+            elif i == index_to_continue - 1:
+                trade_open = False
+            start += 1
+        except IndexError:
+            pass
     return operations,final_points
 
 # Analyze and modify entries to analyze later on
@@ -186,7 +192,7 @@ def backtest_and_analyze(conn, n_periods, symbol, reverse, points, volume_filter
         final_points = points_fibonacci
     return win_rate, final_points
 
-# Execute the method above to get the best parameters
+# Execute the method below to get the best parameters
 def optimize_strategy(conn, n_periods, symbol):
     """
     Optimize the strategy by testing different points for SL and TP or by automatic Points using Fibonacci levels
@@ -219,7 +225,7 @@ def optimize_strategy(conn, n_periods, symbol):
     win_rate, fibonnaci = backtest_and_analyze(conn, n_periods, symbol, reverse=False, points=points, volume_filter=False,fibonnaci=True, random_forest=False)
     results.append((win_rate,fibonnaci,True,False))
     # Add results using fibonacci levels and random forest
-    win_rate, fibonnaci2 = backtest_and_analyze(conn, n_periods, symbol, reverse=False, points=points, volume_filter=False,fibonnaci=True, random_forest=False)
+    win_rate, fibonnaci2 = backtest_and_analyze(conn, n_periods, symbol, reverse=False, points=points, volume_filter=False,fibonnaci=True, random_forest=True)
     results.append((win_rate,fibonnaci2,True,True))
     
     # Check best results
@@ -235,7 +241,7 @@ def optimize_strategy(conn, n_periods, symbol):
         "fibonnaci_used": fibonnaci_is_best,
         "randomForest": random_is_best
     }    
-    
+
 def get_orders_from_backtesting(operations,symbol):
     counters,trades = analyze_results(operations)
     date_for_df = str(date.today())

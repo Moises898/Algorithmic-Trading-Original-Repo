@@ -2,7 +2,7 @@ import customtkinter
 from Classes.components import *
 from Classes.MT5 import MT5
 from Classes.Strategies import main_loop
-from charts import *
+from backtest_gui import *
 import threading
 import requests
 import tkinter as tk

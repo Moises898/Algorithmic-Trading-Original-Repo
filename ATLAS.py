@@ -129,6 +129,7 @@ class App(customtkinter.CTk):
             # Uncomment once you deploy
             # self.user_mt5 = int(self.main_frame.account_number.get())
             # self.password_mt5 = self.main_frame.password_mt5.get()
+            
             # self.server_mt5 = self.main_frame.server.get()
             self.user_mt5 = int(environ.get("USER_DEMO"))
             self.password_mt5 = environ.get("PASSWORD_DEMO")
@@ -164,7 +165,9 @@ class App(customtkinter.CTk):
         if self.stop_thread_flag.is_set():
             self.stop_thread_flag.clear()
         self.close_postions_flag = threading.Event()             
-        periods = 500                                   
+        periods = 500 
+        # Code below is the implementation of a backtest before run the strategy to train a new random forest and combine with
+        # base model to get better entries (takes lonher to start due the backtest and trainning)                                  
         # while True:
         #     if self.symbol == "XAUUSD":
         #         operations,_ = backtest_strategy(self.connection,periods,self.symbol,False,self.points,fibonacci=self.fibonacci,model=False)            

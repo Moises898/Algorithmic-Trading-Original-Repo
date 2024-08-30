@@ -1,4 +1,4 @@
-# Algorithm Trading
+# ATLAS Algorithmic Trading
 
 <h2>Introduction</h2>
 <p>This module use the Metatatrader5 library to connect with the platform, the functions were adapted to launch operations with own parameters and conditions.To know more information about the functions of Metatrade5, please refer the next documentation:<br> 
@@ -66,7 +66,7 @@ Example: <br>
 
 
 <h3><b> display_symbols(elements,sprd=10)</b></h3>
-<p>Use this method to filter and display only the actives with spread less than the input and contains the keyword passed. 
+<p>Use this method to filter and display only the actives symbols with spread less than the input and contains the keyword passed. 
 This method by default filter spread less than 10 and return a list with the symbols information.<br>
 
 Example: <br>
@@ -76,13 +76,17 @@ Example: <br>
 </p>
 
 
-<h3><b> open_position(symbl,operation) </b></h3>
-<p>This method create and send te request to execute the position with the passed parameters.<br>
+<h3><b> open_position(symbol,operation,lot,points=40,comment="Python") </b></h3>
+<p>This method create and send a request to execute the position with the input parameters.<br>
 <ol>
-<li>symbl: Name of the symbol exactly as the broker provided.</li>
+<li>symbol: Name of the symbol exactly as the broker provided.</li>
 <li>operation: BUY(1), SELL(0)</li>
+<li>lot: Size of the operation to open.</li>
+<li>points:</li>
+<ul>a) Number of points to set the SL and TP from the entry poitnt, points are calculated automatically based on the symbol.</ul>
+<ul>b) [SL,TP] a list with the specific price where the SL and TP should be set.</ul>
+<li>comment: Comment displayed in the MT5 console.</li>
 </ol>
-This function by default execute the position with 0.10 lots and return 3 important information to close forward the operation.
 <br>
 
 <i><b>Note: Use the display_symbols() to retrive the name and pass it correctly.</b></i>
@@ -90,46 +94,33 @@ This function by default execute the position with 0.10 lots and return 3 import
 <br>
 Example: 
 
-    #Open a SELL position in EURUSD
-    order,symbol,type_ord = conn.open_position("EURUSD",0)    
+<b>SELL 0.2 lots EURUSD with 40 points as SL/TP</b>
+
+    order_id = conn.open_position("EURUSD",0,0.2,40,"This trade was executed from my code")    
 </p>
 
 <h3><b> get_positions() </b></h3>
-<p>This method display the open positions if exist. It also return a df with the current positions.
+<p>Returns a pandas dataframe with trades open if exists.
 <br>
 Example: 
 
-    #Display the current positions
-    conn.get_positions()   
-    
-    #Display the current positions and assign to a df
     df = conn.get_positions()   
 </p>
 
 <h3><b> close_position(stock,ticket,type_order) </b></h3>
 <p>This method create and send the request to close the position with the passed parameters.<br>
-To get the required paramateres we can use the get_positions() method and select one of the current open positions from the dataFrame or pass the parameters from the last position opened with the open_position().
-
+To get the required paramateres we can use the get_positions() method and select one of the current open positions from the dataFrame.
 <br>
-Example with get_positions: 
 
-    #Assigning the values from the columns to variables
+<b>Assigning the values from the columns to variables</b>
+   
     df = conn.get_positions()
     type_ord = df["type"].iloc[0]
     ticket = df["ticket"].iloc[0]
     symbol = df["symbol"].iloc[0]
     
-    #Passing the data to the method
+    # Passing the data to the method
     conn.close_position(symbol,ticket,type_ord)  
-
-Example with open_position:
-
-    #Open a SELL position in EURUSD
-    ticket,symbol,type_ord = conn.open_position("EURUSD",0)    
-
-    #Close the opened position
-    conn.close_position(symbol,ticket,type_ord) 
-</p>
 
 <h3><b> data_range(symbol, temp, hours, plot=0)</b></h3>
 
@@ -140,15 +131,25 @@ The method will return the informartion from the current time less the hours sel
 
 Example: <br>
     
-    #Return a dataFrame and plot it
-    ranges = MT5.data_range("EURUSD","M1",4,1)      
+Return a dataFrame with 100 min ago to current time and plot it
+    
+    ranges = MT5.data_range("EURUSD","M1",100,1)      
 
 To check the correct timeframes print the next code:
 
     print(MT5.timeframes)
 
-In this example the name of the stock was passed manually, remember use the aproppiate method to extract the name exactly.
+In this example the name of the stock was manually passed, remember use the aproppiate method to extract the name exactly as the broker to avoid errors.
 </p>
+
+<h3><b> calculate_profit(symbol,points,lot,order) </b></h3>
+<p>This method allow you to calculte the profit or loss without need to open trades.<br>
+<br>
+<b>Profit from a trade in EURUSD </b>
+   
+    profit = MT5.calculate_profit("EURUSD",40,0.1,0)
+    
+
 
 
 # Technical
@@ -156,16 +157,23 @@ Contains multiple types of technical analysis, it is based in TA-Lib and modifie
 To know more information about the functions of TA-Lib, please refer the next documentation:
 https://mrjbq7.github.io/ta-lib/index.html
 
-<h3><b>EMA(entry = "close", period = 12, deviation=-1)</b></h3>
-<p>Calculate the values for an exponential moving average, by default is set up to 12 periods and close prices.
 
-The method only returns the last value of the EMA.
+<h3><b>Constructor method</b></h3>
+<p>To start applying technical analysis an object with a dataFrame needs to be created, you can passed any pandas dataFrame that follow the same format as the MT5.data_range() method.
+
 
 Example: <br>
         
-    from technical import EMA
-    # Calculate the last value of the EMA  based on the open price and 9 periods.    
-    EMA = EMA("open",9)
+    Technical =  Technical(df)
+</p>
+
+
+<h3><b>EMA(entry = "close", period = 12, deviation=-1)</b></h3>
+<p>Calculate the values for an exponential moving average, by default is set up to 12 periods and  it is based in close price.
+
+Example: <br>
+        
+    EMA = Technical.EMA("open","100")
 </p>
 
 

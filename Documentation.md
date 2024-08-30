@@ -2,7 +2,7 @@
 
 The strategy have 2 ways two run:
 
-1. Strategy using Fibonnacci SL/TP points, once the strategy detects an entry the SL and TP are set up based on fibonacci levels, in this way the SL and TP are dynamic and numeber of pips will depend on current market conditions.
+1. Strategy using Fibonnacci SL/TP points, once the strategy detects an entry the SL and TP are set up based on fibonacci levels, in this way the SL and TP are dynamic and numeber of pips will depend on current market conditions.w
 The ratio beetween SL and TP also follows a 1:2 rule meaning that unless the accruracy of the entries is lower we can get profit in long-term.
 
 2. Default points. the strategie detects entries and SL/TP are set up in the same distance, accuracy needs to be greater to allow a profit in long term.

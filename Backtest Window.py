@@ -161,14 +161,14 @@ if __name__ == '__main__':
     server = "demoUK-mt5.darwinex.com"    
     conn = MT5(user, password, server)
     n_periods = 1000
-    symbol = "EURUSD"
+    symbol = "XAUUSD"
     #best_settings = optimize_strategy(conn, n_periods, symbol)           
     # Start backtest to get the trades
     trades, win_rate = execute_backtest(connection=conn,
                                         symbol=symbol,
                                         n_periods=n_periods,
-                                        points= 45,#best_settings['best_points'],
-                                        automatic_points=True,#best_settings['fibonnaci_used'],
+                                        points= 200,#best_settings['best_points'],
+                                        automatic_points=False,#best_settings['fibonnaci_used'],
                                         use_random_forest=True,#best_settings['randomForest'],
                                         volume_filter=False,
                                         reverse_entries=False
@@ -185,7 +185,7 @@ if __name__ == '__main__':
         chart.crosshair(mode='normal', vert_color='#FFFFFF', vert_style='dotted',
                         horz_color='#FFFFFF', horz_style='dotted')
         chart.legend(visible=True, font_size=14)           
-        backtest_results = get_orders_from_backtesting(trades,symbol)                              
+        backtest_results = get_orders_from_backtesting(trades,symbol,lots=0.1)                              
         table,table_result = generate_tables_of_trades(chart,backtest_results)       
         chart.precision(2 if symbol == "XAUUSD" else 4)
         chart.show(block=True)   

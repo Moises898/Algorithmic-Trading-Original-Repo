@@ -145,11 +145,11 @@ def main_loop(object,conn,symbol_to_trade,partial_close,risk,target_profit,entri
                 # If the random forest was enabled compare the signals          
                 if entry != 2 and entry_from_model != entry:  
                     # Determine the entry by a trendline by the same depth from the fibonacci
-                    trend = Technical(M1).TREND_BY_TRENDLINE(fibonacci_depth)  
+                    trend = Technical(M1).TREND_BY_BARS_DIRECTION(-fibonacci_depth) #TREND_BY_TRENDLINE(fibonacci_depth)  
                     if trend == entry:
                         print(f"Normal entry will be opened {entry}")
                     else:      
-                        print("Entry will be reversed, original entry", entry)
+                        print("Entry will be reversed: ", entry," -> ", entry_from_model)
                         entry = entry_from_model
             if position:                     
                 lowest,highest = Technical(M1).LOWEST_AND_HIGHEST(fibonacci_depth) 

@@ -82,8 +82,13 @@ def backtest_strategy(conn,n_periods,symbol,reverse,points,apply_volume_filter=F
                     if model and not flag_randomForest:
                         data = inputs_for_random_forest(df_for_strategy,entry,symbol,points_value)  
                         prediction =  get_prediction(data)
-                        if prediction:
-                            entry = 0 if entry == 1 else 1 
+                        # Reverse the entry if the random forest was enabled and the trend by the bars is equal
+                        # If the random forest was enabled compare the signals          
+                        if entry != 2 and prediction != entry:  
+                            # Determine the entry by a trendline by the same depth from the fibonacci
+                            trend = Technical(df_for_strategy).TREND_BY_BARS_DIRECTION(-10) #TREND_BY_TRENDLINE(fibonacci_depth)  
+                            if trend != entry:                    
+                                entry = 0 if entry == 1 else 1 
                         flag_randomForest = True                                             
                     else:
                         break
@@ -242,7 +247,7 @@ def optimize_strategy(conn, n_periods, symbol):
         "randomForest": random_is_best
     }    
 
-def get_orders_from_backtesting(operations,symbol):
+def get_orders_from_backtesting(operations,symbol,lots=0.01):
     counters,trades = analyze_results(operations)
     date_for_df = str(date.today())
     dfs = []    
@@ -283,7 +288,7 @@ def get_orders_from_backtesting(operations,symbol):
                 pips = 0
                 pip_value = 0
             
-            profit = pips * 0.01 * pip_value
+            profit = pips * lots * pip_value
             df_to_export["Pips"] = round(pips,2)
             df_to_export["Profit"] = round(profit,2)
             dfs.append(df_to_export.iloc[0])

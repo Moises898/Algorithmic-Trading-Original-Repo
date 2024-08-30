@@ -62,7 +62,6 @@ class Technical:
             ema = ema[:-deviation]
         return ema
         
-
     # Calculate middle price in the selected period
     def MIDDLE_PRICE(self, period=10):
         df = self.df

@@ -167,7 +167,7 @@ if __name__ == '__main__':
     trades, win_rate = execute_backtest(connection=conn,
                                         symbol=symbol,
                                         n_periods=n_periods,
-                                        points= 200,#best_settings['best_points'],
+                                        points= 400,#best_settings['best_points'],
                                         automatic_points=False,#best_settings['fibonnaci_used'],
                                         use_random_forest=True,#best_settings['randomForest'],
                                         volume_filter=False,

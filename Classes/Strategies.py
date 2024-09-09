@@ -44,6 +44,7 @@ def export_signals(df,result,order,reverse,points,symbol,date_for_df,i):
 
 def main_loop(object,conn,symbol_to_trade,partial_close,risk,target_profit,entries_per_trade,max_trades,timeFrame,flag_session,flag_position,points,lots,both_directions=False,dynamic_sl=True,randomForest=False,fibonacci=False,version_rf=None):
     point = mt5.symbol_info(symbol_to_trade).point   
+    trades = 0
     points_value = 0
     TRADES_SIGNALS = []    
     id = 0
@@ -78,7 +79,7 @@ def main_loop(object,conn,symbol_to_trade,partial_close,risk,target_profit,entri
                                          flag_to_stop=flag_position,
                                          partial_close=partial_close,
                                          dynamic_sl=dynamic_sl)
-            else:
+            elif dynamic_sl:
                 # Active Trailling STOP with 33 %  - Apply in both directions based on entry    
                 TRAILLING_STOP(conn=conn,
                             s=symbol_to_trade,
@@ -91,7 +92,11 @@ def main_loop(object,conn,symbol_to_trade,partial_close,risk,target_profit,entri
                             apply_both_directions=both_directions,
                             flag_to_stop=flag_position,dynamic_sl=dynamic_sl,
                             pnl = total_profit
-                            )
+                            ) 
+            else: 
+                trades += 1                
+                # Pause by 5 minutes before open a trade again
+                sleep(300)           
             check_balance = True                                   
         # If operations are alive and flag is set up to True close all positions
         if positions_open(conn,symbol_to_trade) and flag_position.is_set():  
@@ -130,13 +135,17 @@ def main_loop(object,conn,symbol_to_trade,partial_close,risk,target_profit,entri
         if (positive == max_profit_trades) or (negative == max_loss_trades) or (negative + positive >= max_trades):
             print("Maximun trades reached")
             break
+        if (trades >= max_trades):
+            while positions_open(conn,s=symbol_to_trade):                
+                print("Waiting until trades closes")
+                sleep(60)
         try:            
             M1 = conn.data_range(symbol_to_trade, timeFrame, 100)
         except Exception as e:
             print("Data range failed:", e)
             break
         # Avoid open positions when the profit/risk was acheived
-        if not positions_open(conn,symbol_to_trade) and (total_profit <= target_profit) or (total_profit >= risk):
+        if (total_profit <= target_profit) or (total_profit >= risk):
             # Open positions if the stratgy detects entries            
             position, entry = EMA_CROSSING(df=M1,offset= OFFSET, ema_open=FINAL_EMA_OPEN,ema_period= FINAL_EMA_LH,reverse=False)  
             if randomForest:

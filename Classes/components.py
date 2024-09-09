@@ -275,7 +275,7 @@ def start_strategy_mt5_screen(frame):
     # Define Tkinter variables to update the GUI
     frame.risk = tk.StringVar(value="0.5%")
     frame.target_profit = tk.StringVar(value="0.5%")
-    frame.max_trades = tk.StringVar(value="8")
+    frame.max_trades = tk.StringVar(value="5")
     frame.balance = connection.account_details().balance   
     lots_value = 0.01 if frame.balance <= 1000 else round((frame.balance / 10_000) * .10, 2)
     points = lambda x: TARGET_POINTS_XAUUSD if x == "XAUUSD" else TARGET_POINTS_EURUSD
@@ -380,7 +380,7 @@ def start_strategy_mt5_screen(frame):
         frame.main_frame.points_entry.configure(validate='key', validatecommand=(frame.register(validate_numeric_input), '%d', '%S'))
         # Dynamic SL
         frame.main_frame.dynamic_SL_label = customtkinter.CTkLabel(frame.main_frame,
-                                                                        text="Dynamic SL:", anchor="e")
+                                                                        text="Trailing Stop:", anchor="e")
         frame.main_frame.dynamic_SL_label.grid(row=12, column=0, padx=PADX, pady=PADY)
         frame.main_frame.dynamic_SL_menu = customtkinter.CTkOptionMenu(frame.main_frame,   
                                                                        values=["Enable", "Disable"])

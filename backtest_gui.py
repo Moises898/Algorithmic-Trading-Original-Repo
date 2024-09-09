@@ -161,15 +161,15 @@ if __name__ == '__main__':
     server = "demoUK-mt5.darwinex.com"    
     conn = MT5(user, password, server)
     n_periods = 1000
-    symbol = "XAUUSD"
+    symbol = "EURUSD"
     #best_settings = optimize_strategy(conn, n_periods, symbol)           
     # Start backtest to get the trades
     trades, win_rate = execute_backtest(connection=conn,
                                         symbol=symbol,
                                         n_periods=n_periods,
-                                        points= 400,#best_settings['best_points'],
-                                        automatic_points=False,#best_settings['fibonnaci_used'],
-                                        use_random_forest=True,#best_settings['randomForest'],
+                                        points= 45,#best_settings['best_points'],
+                                        automatic_points=True,#best_settings['fibonnaci_used'],
+                                        use_random_forest=False,#best_settings['randomForest'],
                                         volume_filter=False,
                                         reverse_entries=False
                                         )   

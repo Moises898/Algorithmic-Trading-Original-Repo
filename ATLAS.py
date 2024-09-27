@@ -1,7 +1,7 @@
 import customtkinter
 from Classes.components import *
 from Classes.MT5 import MT5
-from Classes.Strategies import main_loop
+from Classes.Strategies import single_trade_open,multiple_entries_open
 from backtest_gui import *
 import threading
 import requests
@@ -183,12 +183,32 @@ class App(customtkinter.CTk):
         #     else:
         #         print("Duplicating")
         #         periods = periods * 2 
-        # Create new thread with the strategy        
-        self.strategy_thread = threading.Thread(target=main_loop,
+        # Create new thread with the strategy, one single trade
+        # self.strategy_thread = threading.Thread(target=single_trade_open,
+        #                                         args=(self,
+        #                                               self.connection,
+        #                                               self.symbol,
+        #                                               self.partial_close,
+        #                                               self.risk,self.profit,
+        #                                               self.positions_entry,
+        #                                               self.max_trades,
+        #                                               "M1",
+        #                                               self.stop_thread_flag,
+        #                                               self.close_postions_flag,
+        #                                               self.points,
+        #                                               self.lots,
+        #                                               True,
+        #                                               self.dynamic_sl,
+        #                                               False,
+        #                                               self.fibonacci
+        #                                               #self.models_combined
+        #                                               ))             
+        #################################################
+        # Multiple trades
+        self.strategy_thread = threading.Thread(target=multiple_entries_open,
                                                 args=(self,
                                                       self.connection,
-                                                      self.symbol,
-                                                      self.partial_close,
+                                                      self.symbol,                                                      
                                                       self.risk,self.profit,
                                                       self.positions_entry,
                                                       self.max_trades,
@@ -196,14 +216,9 @@ class App(customtkinter.CTk):
                                                       self.stop_thread_flag,
                                                       self.close_postions_flag,
                                                       self.points,
-                                                      self.lots,
-                                                      True,
-                                                      self.dynamic_sl,
-                                                      True,
-                                                      self.fibonacci
-                                                      #self.models_combined
+                                                      self.lots,                                                                                                                                                                                                                      
                                                       ))             
-                
+                        
         strategy_running_screen(self)       
                  
     def start_backtest(self):        

@@ -8,7 +8,6 @@ import glob
 with open("Classes/Models/random_forest_59_historical_data.pkl", 'rb') as file:
     base_model = pickle.load(file)
 # Load the model to detect the entry
-# Load the model
 with open("Classes/Models/random_forest_model-2024-07-16-predict_emtries.pkl", 'rb') as file:
     predict_entries_model = pickle.load(file)
 def clean_order_column(value): 

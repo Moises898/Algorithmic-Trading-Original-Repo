@@ -19,3 +19,8 @@ It can enabled or not to reverse the entries if the prediction doesn't match.
 
 The random forest is enbled, if the prediction don't match a trendline will be traced to see the trend and this will decide the operation type.
 
+## Update 19/09/2024
+
+The main idea from the code it was to execute one trade at the time and analyze when to close it, after a couple of month seems to be not profitable and based on the backtest module, the strategy seems to be profitable if the signals are opened and leave them to close as theirself, the ratio of this is based 1:2 and present profit in most cases with 400 points for XAUUSD, code will be refactor to clean the code and execute in this ways with a time-interval of 10 min as default between trades.
+
+The strategy will open the trades based on the signals until a max number of trades will be opened.

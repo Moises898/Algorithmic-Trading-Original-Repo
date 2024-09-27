@@ -5,6 +5,8 @@ import customtkinter
 from datetime import date
 from random import randint
 from Classes.randomForest import inputs_for_random_forest,get_prediction,inputs_for_random_forest_v2
+from threading import Timer
+
 # Parameteters for strategy (not modify)
 OFFSET = 2
 CHOP_LIMIT = 50.24
@@ -25,14 +27,17 @@ ENTRIES_PER_SIGNAL = 4
 
 
 
-# Stragies created by my own
 def positions_open(conn,s=None):
     """
+    --Helper Function--    
         Check if exists positions opened in the symbol
     """    
     return not conn.get_positions(0).empty if s is None else not conn.get_positions(0,s=s).empty
 
 def export_signals(df,result,order,reverse,points,symbol,date_for_df,i):    
+    """
+        Save the parameters from the signals generated to export later
+    """
     df["result"] = result
     df["reverse"] = reverse
     df["points"] = points
@@ -42,7 +47,14 @@ def export_signals(df,result,order,reverse,points,symbol,date_for_df,i):
     df["ID"] = symbol+"-"+date_for_df+"-"+str(points)+"live"+"-"+str(i)+str(id_rand)
     return df,id_rand
 
-def main_loop(object,conn,symbol_to_trade,partial_close,risk,target_profit,entries_per_trade,max_trades,timeFrame,flag_session,flag_position,points,lots,both_directions=False,dynamic_sl=True,randomForest=False,fibonacci=False,version_rf=None):
+def single_trade_open(object,conn,symbol_to_trade,partial_close,risk,target_profit,entries_per_trade,max_trades,timeFrame,flag_session,flag_position,points,lots,both_directions=False,dynamic_sl=True,randomForest=False,fibonacci=False,version_rf=None):
+    """
+        Strategy execute one trade an analyze when to close it, allows the user play around with different parameters.
+            - Automatic Points based on Fibonnaci Levels
+            - Trailling Stop
+            - Partial Close
+            - Random Forest
+    """
     point = mt5.symbol_info(symbol_to_trade).point   
     trades = 0
     points_value = 0
@@ -92,11 +104,7 @@ def main_loop(object,conn,symbol_to_trade,partial_close,risk,target_profit,entri
                             apply_both_directions=both_directions,
                             flag_to_stop=flag_position,dynamic_sl=dynamic_sl,
                             pnl = total_profit
-                            ) 
-            else: 
-                trades += 1                
-                # Pause by 5 minutes before open a trade again
-                sleep(300)           
+                            )            
             check_balance = True                                   
         # If operations are alive and flag is set up to True close all positions
         if positions_open(conn,symbol_to_trade) and flag_position.is_set():  
@@ -232,6 +240,99 @@ def main_loop(object,conn,symbol_to_trade,partial_close,risk,target_profit,entri
             pd.concat(TRADES_SIGNALS).to_csv(fr"C:\Users\Moy\Documents\Python\Algorithmic Trading\HFT\backtest_data\{symbol_to_trade}-{date_for_df}-{points_value}-fibonacci-{id}.csv")     
         else:
             pd.concat(TRADES_SIGNALS).to_csv(fr"C:\Users\Moy\Documents\Python\Algorithmic Trading\HFT\backtest_data\{symbol_to_trade}-{date_for_df}-{points}-{id}.csv")     
+
+def multiple_entries_open(object,conn,symbol_to_trade,risk,target_profit,entries_per_trade,max_trades,timeFrame,flag_session,flag_position,points,lots,min=10):
+    """
+        Strategy open multiples trades and monitor profit until sessions is closed. Strategy wait 10 min by default to open a new trade in case a signal is detected        
+    """                
+    def reset_timer():       
+        nonlocal timer_active
+        timer_active = False
+        print("Timer end, trades can be opened again.") 
+        
+    min_between_trades = min * 60
+    open_trades = True
+    trades = 0    
+    TRADES_SIGNALS = []    
+    id = 0
+    date_for_df = str(date.today())    
+    FINAL_EMA_OPEN = EMA_OPEN_XAUUSD if symbol_to_trade == "XAUUSD" else EMA_OPEN_EURUSD
+    FINAL_EMA_LH = EMA_LH_XAUUSD if symbol_to_trade == "XAUUSD" else EMA_LH_EURUSD    
+    total_profit = 0            
+    balance = conn.account_details().balance        
+    risk = (balance * risk) * -1
+    target_profit = balance * target_profit
+    timer_active = False    
+    while not flag_session.is_set():                
+        # Close operations if the button from the GUI is pressed
+        if positions_open(conn,symbol_to_trade) and flag_position.is_set():  
+            tickets_to_close = conn.get_positions().ticket.values          
+            print(f"Next Trades wil be closed: {tickets_to_close}")
+            for ticket in tickets_to_close:                
+                conn.close_position(symbol_to_trade, ticket, entry, lots, comment="Closed by limit reached")                
+            check_balance = True
+            # Clear the flag to avoid close the next entries
+            flag_position.clear()                           
+                                                                   
+        # Close the session if profit/loss or max entries was reached
+        if (total_profit >= target_profit) or (total_profit <= risk):
+            print(f"The session was closed automatically by {'loss' if total_profit < 0 else 'profit'} limit reached!")
+            break
+        if trades >= max_trades:
+            print("Maximun trades reached, no more trades will be opened")
+            open_trades = False                  
+        try:            
+            M1 = conn.data_range(symbol_to_trade, timeFrame, 100)
+        except Exception as e:
+            print("Data range failed:", e)
+            break
+        # Open trades while limits are not reached
+        if open_trades and not timer_active and total_profit <= target_profit and total_profit >= risk:
+            # Open positions if the stratgy detects entries            
+            position, entry = EMA_CROSSING(df=M1,offset= OFFSET, ema_open=FINAL_EMA_OPEN,ema_period= FINAL_EMA_LH,reverse=False)  
+            if position:                                        
+                print("******************", "BUY" if entry == 1 else "SELL", "******************")                
+                tickets = [] 
+                tickets_copy = []                                 
+                while len(tickets) < entries_per_trade:                                        
+                    ticket = conn.open_position(symbol_to_trade, entry, lots,points)
+                    if ticket != 0:
+                        tickets.append(ticket) 
+                valid_entries = False
+                for ticket in tickets:
+                    if ticket != 10019:
+                        valid_entries = True
+                        tickets_copy.append(ticket)                        
+                if not valid_entries:
+                    flag_session.set()
+                    print("Please reduce the lots")  
+                else:                                 
+                    trades += 1  
+                    # Start timer to prevent more trades for 10 min
+                    timer_active = True
+                    Timer(min_between_trades, reset_timer).start()
+        sleep(1)
+    # Close all trades before close the session
+    if positions_open(conn,s=symbol_to_trade):        
+        tickets_to_close = conn.get_positions().ticket.values          
+        print(f"Next Trades wil be closed before close the session: {tickets_to_close}")
+        for ticket in tickets_to_close:                
+            conn.close_position(symbol_to_trade, ticket, entry, lots, comment="Close Trades")
+    if not flag_session.is_set():                  
+        flag_session.set()
+    # Display the buttons when session is closed automatically by one condtion reached
+    try:        
+        object.main_frame.stop_thread.grid_forget()    
+        object.main_frame.close_trades.grid_forget()                
+        object.sidebar_button_2.configure(state="enabled")
+        object.main_frame.stop_thread = customtkinter.CTkButton(object.main_frame, text="Return Strategy Screen",command= object.start_connection)
+        object.main_frame.stop_thread.grid(row=7, column=0,columnspan=2, padx=40, pady=0,sticky="ew")                             
+    except:
+        pass
+    # Export the current operations
+    print(f"Profit: {total_profit}")  
+    if len(TRADES_SIGNALS) > 0:        
+        pd.concat(TRADES_SIGNALS).to_csv(fr"C:\Users\Moy\Documents\Python\Algorithmic Trading\HFT\backtest_data\{symbol_to_trade}-{date_for_df}-{points}-{id}.csv")     
 
 def EMA_CROSSING(df,offset=3, ema_open=15, ema_period=3,reverse=False,volume_filter=False,show=False):
     """

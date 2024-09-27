@@ -7,20 +7,19 @@ DEFAULT_RANGE = lambda x:  range(100, 1200, 100) if x == "XAUUSD" else range(40,
 
 def backtest_strategy(conn,n_periods,symbol,reverse,points,apply_volume_filter=False,candles_per_entry=10,fibonacci=False,model=False,dataFrame=None):
     """
-        Backtest the strategy to detect entries in the past, the method will return a dictionary with the entry price and the operation type (BUY/SELL)
+        Backtest the strategy to detect entries in the past, the method will return a dictionary with the entry price and the operation type (BUY/SELL)                
     """
     FINAL_EMA_OPEN = EMA_OPEN_XAUUSD if symbol == "XAUUSD" else EMA_OPEN_EURUSD
     FINAL_EMA_LH = EMA_LH_XAUUSD if symbol == "XAUUSD" else EMA_LH_EURUSD    
-    if dataFrame is None:
-        candles_lenght = n_periods + 500
-        df_testing = conn.data_range(symbol,"M1",candles_lenght)
-        # Emulate Live Trading 
-        start = 499
+    if dataFrame is None:        
+        candles_lenght = n_periods + 100
+        df_testing = conn.data_range(symbol,"M1",candles_lenght)        
+        start = 100
         iterations = n_periods
     else:
         if dataFrame.shape[0] >= 200:
             df_testing = dataFrame
-            start = 99
+            start = 100
             iterations = (dataFrame.shape[0] - start)
         else:
             print("Rows need to be grater or equal to 200")

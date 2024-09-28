@@ -10,14 +10,22 @@ https://www.mql5.com/en/docs/integration/python_metatrader5 </p>
 
 # MT5 Class
 
-All related methods for request retrieve and send data with the platform of Metatrader 5.
+This class is a wrapper for the MT5 library that contains all related methods to interact with Metatrader 5 such as: 
 
-<h3><b> Constructor Method</b></h3>
-<p>Every time we instanciate a new object of this class the cosntructor method is called and needs to receive 3 parameters:
+<li>Stablish Connection</li>
+<li>Retrieve data</li>
+<li>Open Trades</li>
+<li>Close Trades</li>
+<li>Get Account Info</li>
+
+<h3><b> Constructor Method </b></h3>
+<p>Create an object to enable the connection with MT5
+
+<h3>Parameters</h3>
 <ol>
-<li>User (int type)</li>
-<li>Password (str type)</li>
-<li>Server (str type)</li>
+<li>User --> int</li>
+<li>Password --> str</li>
+<li>Server --> str</li>
 </ol>
 
 Example: <br>
@@ -27,12 +35,12 @@ Example: <br>
     server = "MetaQuotes-Demo"
     conn = MT5(user,password,server)
 
+<i>Note: By default the contructor method call the start method to start the connection to the MT5 server</i>
 </p>
 
 
-
 <h3><b> start()</b></h3>
-<p>Call this method once we create our object to stablish the connection with Metatrader5.<br>
+<p>Stablish a connection to the Metatrader5 server.<br>
 
 Example: <br>
     
@@ -41,7 +49,7 @@ Example: <br>
 
 
 <h3><b> close()</b></h3>
-<p>Call this method at the end of your code to close the connection to Metatrader5.<br>
+<p>Close the connection to Metatrader5 server.<br>
 
 Example: <br>
         
@@ -50,23 +58,31 @@ Example: <br>
 
 
 
-<h3><b> account()</b></h3>
-<p>Display most important information from your account, this method return the balance.<br>
+<h3><b> account_details(show=0)</b></h3>
+<p>Return an object of type AccountInfo from Metatrader5 library. <br>
+<i>Note: Method don't display info by default pass 1 as arg to print to the console.<br>
 
 Example: <br>
-    
+
     #Display only the info
-    conn.account()
-    
-    #Display and set the value to a variable
-    balance = conn.account()
+    conn.account_details()
+<br>
+
+    #Display and save the value to a variable
+    balance = conn.account_details()
 
 </p>
 
+<h3><b> display_symbols(elements,spread=10)</b></h3>
 
+<h3>Parameters</h3>
+<ol>
+<li>elements --> list</li>
+<li>spread --> int</li>
+</ol>
 
-<h3><b> display_symbols(elements,sprd=10)</b></h3>
-<p>Use this method to filter and display only the actives symbols with spread less than the input and contains the keyword passed. 
+<p>Display symbols that follows the criteria passed (spread, keyword symbol). <br>
+
 This method by default filter spread less than 10 and return a list with the symbols information.<br>
 
 Example: <br>
@@ -77,29 +93,41 @@ Example: <br>
 
 
 <h3><b> open_position(symbol,operation,lot,points=40,comment="Python") </b></h3>
-<p>This method create and send a request to execute the position with the input parameters.<br>
+
+<h3>Parameters</h3>
+
 <ol>
-<li>symbol: Name of the symbol exactly as the broker provided.</li>
-<li>operation: BUY(1), SELL(0)</li>
-<li>lot: Size of the operation to open.</li>
-<li>points:</li>
+<li>symbol: Name of the symbol exactly as in the broker appears --> str</li>
+<li>operation: BUY(1), SELL(0) --> int</li>
+<li>lot: Size of the operation to open --> int </li>
+<li>points: --> list/str</li>
 <ul>a) Number of points to set the SL and TP from the entry poitnt, points are calculated automatically based on the symbol.</ul>
 <ul>b) [SL,TP] a list with the specific price where the SL and TP should be set.</ul>
 <li>comment: Comment displayed in the MT5 console.</li>
 </ol>
 <br>
 
-<i><b>Note: Use the display_symbols() to retrive the name and pass it correctly.</b></i>
-<br>
-<br>
+<p>This method create and send a request to execute the position with the input parameters.<br>
+
+<i><b>Note: Use the display_symbols() to retrive the name and pass it correctly.</b></i></p>
+
+
 Example: 
 
-<b>SELL 0.2 lots EURUSD with 40 points as SL/TP</b>
+<b>SELL 0.2 lots in EURUSD with 40 points as SL/TP</b>
 
     order_id = conn.open_position("EURUSD",0,0.2,40,"This trade was executed from my code")    
 </p>
 
-<h3><b> get_positions() </b></h3>
+<h3><b> get_positions(show,symbol,id) </b></h3>
+<h3>Parameters</h3>
+
+<ol>
+<li>show: Display message in the console --> int</li>
+<li>symbol: Get trades info with symbol passed --> str</li>
+<li>id: Get trade info with the ID passed --> str</li>
+</ol>
+
 <p>Returns a pandas dataframe with trades open if exists.
 <br>
 Example: 
@@ -107,9 +135,20 @@ Example:
     df = conn.get_positions()   
 </p>
 
-<h3><b> close_position(stock,ticket,type_order) </b></h3>
-<p>This method create and send the request to close the position with the passed parameters.<br>
-To get the required paramateres we can use the get_positions() method and select one of the current open positions from the dataFrame.
+<h3><b> close_position(symbol,ticket,type_order) </b></h3>
+<h3>Parameters</h3>
+
+<ol>
+<li>symbol:Name of the symbol to close the trade --> str</li>
+<li>ticket: ID of the trade --> str </li>
+<li>type_order: BUY (1) or SELL (0) --> int </li>
+<li>vol: Size of the trade --> float </li>
+<li>comment: Comment to sent (Close by default) --> str</li>
+</ol>
+
+<p>This method create and send the request to close the position with passed args.<br>
+
+To get the required args we can use the get_positions() method and select one of the current open positions from the dataFrame or manually pass.
 <br>
 
 <b>Assigning the values from the columns to variables</b>
@@ -118,22 +157,26 @@ To get the required paramateres we can use the get_positions() method and select
     type_ord = df["type"].iloc[0]
     ticket = df["ticket"].iloc[0]
     symbol = df["symbol"].iloc[0]
+    volume = df["volume"].iloc[0]
     
     # Passing the data to the method
-    conn.close_position(symbol,ticket,type_ord)  
+    conn.close_position(symbol,ticket,type_ord,volume,"Trade closed from my code")  
 
-<h3><b> data_range(symbol, temp, hours, plot=0)</b></h3>
+<h3><b> get_data(symbol, temp, n_periods, plot=0)</b></h3>
 
-<p>This method retrive the data in format of dataFrame from the period and temporary passed.<br>
-The method will return the informartion from the current time less the hours selected in the timeframe passed.<br>
-<br>
-<i><b>Note: By default the method doesn't return a graph if you want to plot it pass 1 as parameter at the end.</b></i>
+<h3>Parameters</h3>
 
+<ol>
+<li>symbol:Name of the symbol --> str</li>
+<li>temp: TimeFrame to get data (M1,M3,H1) --> str </li>
+<li>n_periods: Number of candles to get from current time (Current time - n_periods) --> int </li>
+<li>plot: Display a chart in japanese format (1 - Display) --> int </li>
+</ol>
 Example: <br>
     
-Return a dataFrame with 100 min ago to current time and plot it
+Return a dataFrame with the last 100 min and plot it.
     
-    ranges = MT5.data_range("EURUSD","M1",100,1)      
+    data_from_n_periods = MT5.get_data("EURUSD","M1",100,1)      
 
 To check the correct timeframes print the next code:
 
@@ -143,9 +186,18 @@ In this example the name of the stock was manually passed, remember use the apro
 </p>
 
 <h3><b> calculate_profit(symbol,points,lot,order) </b></h3>
+<h3>Parameters</h3>
+
+<ol>
+<li>symbol:Name of the symbol --> str</li>
+<li>points: Number of points to calculate the profit/loss --> int </li>
+<li>lots: Size of the simulated trade --> float/int </li>
+<li>order: BUY (1) or SELL (0) --> int </li>
+</ol>
+
 <p>This method allow you to calculte the profit or loss without need to open trades.<br>
 <br>
-<b>Profit from a trade in EURUSD </b>
+<b>Profit from a trade in EURUSD symbol</b>
    
     profit = MT5.calculate_profit("EURUSD",40,0.1,0)
     

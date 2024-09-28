@@ -62,7 +62,7 @@ class Technical:
         return directions
 
     # Exponential Moving Averge indicator
-    def EMA(self, entry="close", period=12,deviation=1):
+    def EMA(self, entry="close", period=12,deviation=-1):
         """
         Calculate an Exponential Moving Average based on the args passed.
 

@@ -22,16 +22,31 @@ def direction(bar):
 
 class Technical:
 
-    # Construct method that receive the df
+    # Constructor method that receive the df
     def __init__(self, df=None):
+        """
+        Create a Technical object to acces all the technical analysis fucntions.
+
+        Args:
+            df (pandas dataframe, optional): DataFrame object to calculate values. Defaults to None.
+        """
         self.df = df
-        self.PREVIOUS_BAR()
-        self.CURRENT_BAR()
+        self.get_previous_bar_trend()
+        self.get_current_bar_trend()
         self.df = self.df.copy()
         self.df["hl2"] = (self.df["high"]+self.df["low"])/2
 
     # Return the direction of each bar
-    def RETURN_DIRECTION(self, lenght):
+    def get_bar_direction(self, lenght):
+        """
+        Determine the direction of each bar from the dataFrame based on the open and close price.
+
+        Args:
+            lenght (int): Number of periods to get directions from the DataFrame
+
+        Returns:
+            list: A list of up or down trend for each bar.
+        """
         df = self.df
         directions = []
         for bar in df[-lenght:].index:
@@ -48,6 +63,17 @@ class Technical:
 
     # Exponential Moving Averge indicator
     def EMA(self, entry="close", period=12,deviation=-1):
+        """
+        Calculate an Exponential Moving Average based on the args passed.
+
+        Args:
+            entry (str, optional): Column to use to calculate the EMA . Defaults is to "close".
+            period (int, optional): Number of periods to calculate the EMA . Defaults is to 12.
+            deviation (int, optional): Offset the last values to get a deviation of n_periods. Defaults to -1.
+
+        Returns:
+            list : List of the the values for each time of period of the dataFrame.
+        """
         df = self.df
         ema = ta.EMA(df[entry], timeperiod=period)
         if deviation > 0:            
@@ -56,32 +82,74 @@ class Technical:
 
     # Simple Moving Averge indicator
     def SMA(self, entry="close", period=12,deviation=-1):
+        """
+        Calculate a Simple Moving Average based on the args passed.
+
+        Args:
+            entry (str, optional): Column to use to calculate the SMA . Defaults is to "close".
+            period (int, optional): Number of periods to calculate the SMA . Defaults is to 12.
+            deviation (int, optional): Offset the values to get a deviation of n_periods. Defaults to -1.
+
+        Returns:
+            list : List of the the values for each time of period of the dataFrame.
+        """
         df = self.df
-        ema = ta.SMA(df[entry], timeperiod=period)
+        sma = ta.SMA(df[entry], timeperiod=period)
         if deviation > 0:            
-            ema = ema[:-deviation]
-        return ema
+            sma = sma[:-deviation]
+        return sma
         
     # Calculate middle price in the selected period
-    def MIDDLE_PRICE(self, period=10):
+    def calculate_middle_price(self, period=10):
+        """
+        Calculate the middle price for the selected window of periods.
+
+        Args:
+            period (int, optional): Number of periods to calculate the middle price. Defaults to 10.
+
+        Returns:
+            list : List of middle prices for each time of period of the dataFrame.
+        """
         df = self.df
         price = ta.MIDPRICE(df["high"], df["low"], timeperiod=period)
-        return price[-1]
+        return price
 
     # Calculate the rate of change in the price
-    def RATE_OF_CHANGE(self, entry="open", period=8):
+    def calculate_roc(self, entry="open", period=8):
+        """
+        Calculate the rate of change (ROC) for the selected window of periods.
+
+        Args:
+            entry (str, optional): Column to use to calculate the ROC values. Defaults to "open".
+            period (int, optional): Number of period to perfom the calculation. Defaults to 8.
+
+        Returns:
+            list: List of ROC values for each time of period of the dataFrame.
+        """
         df = self.df
         ROC = ta.ROCP(df[entry], timeperiod=period)
         return ROC
 
-    # AVG-PRICE for the current bar
-    def AVG_PRICE(self):
+    # AVG-PRICE 
+    def calculate_avg_price(self):
+        """
+        Calculate the average price.
+
+        Returns:
+            list : Return a list with the average prices for each time of period of the dataFrame.
+        """
         df = self.df
         price = ta.AVGPRICE(df["open"], df["high"], df["low"], df["close"])
-        return price[-1]
+        return price
 
     # Define direction of the previous bar and set LOW and HIGH parameters
-    def PREVIOUS_BAR(self):
+    def get_previous_bar_trend(self):
+        """
+        Get previous bar trend based in open and close values.
+
+        Returns:
+            int : Uptrend (1) or Downtrend (0)
+        """
         df = self.df
         PREV_BAR = df.iloc[-2]
         PREV_BAR_2 = df.iloc[-3]
@@ -110,7 +178,13 @@ class Technical:
         return self.PREV_DIRECTION
 
     # Define direction of the previous bar and set LOW and HIGH parameters
-    def CURRENT_BAR(self):
+    def get_current_bar_trend(self):
+        """
+        Get current bar trend based in open and close values.
+
+        Returns:
+            int : Uptrend (1) or Downtrend (0)
+        """
         df = self.df
         CURRENT_BAR = df.iloc[- 1]
         self.CURR_BAR_HIGH = CURRENT_BAR["high"]
@@ -138,7 +212,16 @@ class Technical:
         return self.CURR_DIRECTION
 
     # Count the direction of each bar to determine the trend
-    def TREND_BY_BARS_DIRECTION(self, index=0):
+    def calculate_trend_by_bars_trend(self, n_periods=0):
+        """
+        Calculate the trend based on each bar direction for the selected window of periods.
+
+        Args:
+            n_periods (int, optional): Number of period to perfom the calculation . Defaults to 0.
+
+        Returns:
+            int :  Uptrend (1) or Downtrend (0)
+        """
         df = self.df
         trend_counters = {
             "bullish_counter": 0,
@@ -146,8 +229,8 @@ class Technical:
             "doji_counter": 0
         }
         # Loop to calculate the direction of each bar
-        for bar in range(len(df.iloc[index:])):
-            dir = direction(df.iloc[index+bar])
+        for bar in range(len(df.iloc[-n_periods:])):
+            dir = direction(df.iloc[-n_periods+bar])
             if dir == 1:
                 trend_counters["bullish_counter"] = trend_counters["bullish_counter"] + 1
             elif dir == 0:
@@ -167,13 +250,22 @@ class Technical:
         return trend
 
     # Compare the first bar with the last to determine the trend
-    def TREND_BY_TRENDLINE(self, index=0):
+    def calculate_trend_by_trendline(self, n_periods=0):
+        """
+        Calculate the trend based on a trend line from for the selected window of periods. Close values are used to calculate the trendline.
+
+        Args:
+            n_periods (int, optional): Number of period to perfom the calculation. Defaults to 0.
+
+        Returns:
+            int :  Uptrend (1) or Downtrend (0)
+        """
         df = self.df
         # Define main trend
-        if df["close"].iloc[index] > df["close"].iloc[-1]:
+        if df["close"].iloc[-n_periods] > df["close"].iloc[-1]:
             # SELL
             trend = 0
-        elif df["close"].iloc[index] < df["close"].iloc[-1]:
+        elif df["close"].iloc[-n_periods] < df["close"].iloc[-1]:
             # BUY
             trend = 1
         else:
@@ -182,9 +274,18 @@ class Technical:
         return trend
 
     # Choppiness  Index
-    def CHOP(self, lookback=6, deviation=-1):
+    def calculate_chopiness_index(self, lookback=6):
         """
-            IF CHOPPINESS INDEX <= 38.2 --> MARKET IS TRENDING
+        Calculate the chopiness index values.
+
+        Args:
+            lookback (int, optional): Numeber of periods to rolling. Defaults to 6.            
+
+        Returns:
+            list : CHOP values for each period of time.
+        
+        Note:
+            IF CHOPPINESS INDEX <= 38.2 --> MARKET IS TRENDING                    
         """
         df = self.df
         tr1 = pd.DataFrame(df["high"] - df["low"]).rename(columns={0: 'tr1'})
@@ -199,27 +300,57 @@ class Technical:
         lowl = df["low"].rolling(lookback).min()
         ci = 100 * np.log10((atr.rolling(lookback).sum()) /
                             (highh - lowl)) / np.log10(lookback)            
-        return ci.iloc[deviation] 
+        return ci 
 
     # Trend Angle
-    def TREND_ANGLE(self, index=0):
+    def calculate_trend_angle(self, n_periods=50):
+        """
+        Calculate the angle of the current trend from the selected window of time.
+
+        Args:
+            n_periods (int, optional): Number of periods to take to perform the calculation. Defaults to 50.
+
+        Returns:
+            float : Angle of th trend from first to current bar.
+        """
         df = self.df
-        df = df.iloc[index:]
-        df.reset_index(inplace=True)
+        # If the n_periods is lower than the lenght of the dataFrame
+        if not n_periods > df.shape[0]:
+            df = df.iloc[-n_periods:]
+            df.reset_index(inplace=True)
         Y1 = df["close"].iloc[0]
         Y2 = df["close"].iloc[len(df)-1]
         ANGLE = atan2((Y2 - Y1), 0.10) * 180 / pi
         return ANGLE
 
     # Lowest and highest values from the window passed
-    def LOWEST_AND_HIGHEST(self, lenght=10):
+    def get_lowest_and_highest(self, lenght=10):
+        """
+        Calculate the lowest and highest values for a window of time.
+
+        Args:
+            lenght (int, optional): Number of periods to take to perform the calculation. Defaults to 10.
+
+        Returns:
+            float, float : Lowest and Highest values
+        """
         df = self.df        
         highest_high = ta.MAX(df["high"], timeperiod=lenght)
         lowest_low = ta.MIN(df["low"], timeperiod=lenght)        
         return lowest_low[-1],highest_high[-1]    
 
     # SUPER TREND FUNCTION THAT RETURN DIRECTION OF SIGNAL
-    def SUPER_TREND(self, atr_period=15, multiplier=3):
+    def calculate_super_trend(self, atr_period=15, multiplier=3):
+        """
+        Calculate the super trend indicator.
+
+        Args:
+            atr_period (int, optional): Number of periods to take to perform the ATR calculation. Defaults to 15.
+            multiplier (int, optional): Multiplier to take to perform the calculation. Defaults to 3.
+
+        Returns:
+            int : Uptrend (1) or Downtrend (0)
+        """
         df = self.df
         high = df['high']
         low = df['low']
@@ -256,8 +387,3 @@ class Technical:
                 final_lowerband[curr] = np.nan
         
         return 1 if supertrend[-1] else 0
-    
-    def HT_TRENDLINE(self):
-        df = self.df
-        HT = ta.HT_TRENDLINE(df["close"].values)
-        return HT[-1]

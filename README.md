@@ -60,7 +60,7 @@ Example: <br>
 
 <h3><b> account_details(show=0)</b></h3>
 <p>Return an object of type AccountInfo from Metatrader5 library. <br>
-<i>Note: Method don't display info by default pass 1 as arg to print to the console.<br>
+<i>Note: Method don't display info by default pass 1 as arg to print to the console.</i><br>
 
 Example: <br>
 

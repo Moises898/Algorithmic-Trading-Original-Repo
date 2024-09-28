@@ -5,12 +5,9 @@ import mplfinance as mpl
 import datetime as dt
 import sys
 import MetaTrader5 as mt5
-            
-ES_CONTINUOUS = 0x80000000
-ES_SYSTEM_REQUIRED = 0x00000001
+from pandas import DataFrame
 
 class MT5:
-    
     # Define Global attributes
     time_frames = {
         "M1": mt5.TIMEFRAME_M1,
@@ -37,39 +34,45 @@ class MT5:
     }
     utc_from = None
     utc_to = None
-    date = None    
+    date = None
     timezone = pytz.timezone("Etc/UTC")
-    #timezone = pytz.timezone('America/Mexico_City')
     # Tuple with all the symbols
     group_symbols = mt5.symbols_get()
 
     # Constructor method every time we want to create a new object
     def __init__(self, user, password, server):
+        self.error = None
+        self.rates = None
+        self.bars = None
         self.user = user
         self.password = password
         self.server = server
         self.connection_state = False
-        self.start()        
+        self.start()
 
     def start(self):
+        """
+            Start connection to the MT5 server.
+        """
         user = self.user
         password = self.password
-        server = self.server       
+        server = self.server
         # Establish MetaTrader 5 connection to a specified trading account
-        if not mt5.initialize(login=user, server=server, password=password):            
+        if not mt5.initialize(login=user, server=server, password=password):
             self.error = mt5.last_error()
-            print("initialize() failed, error code =", self.error)            
-            sys.exit()            
+            print("initialize() failed, error code =", self.error)
+            sys.exit()
         print("Successfully Connection! \n")
-        self.connection_state = True        
-        
+        self.connection_state = True
 
-    # Get object with all details
+        # Get object with all details
+
     def account_details(self, show=0):
         # authorized = mt5.login(self.user, password=self.password, server=self.server)
         # if authorized:
+        account_info = None
         try:
-            account_info = mt5.account_info()            
+            account_info = mt5.account_info()
         except:
             print("failed to connect at account #{}, error code: {}".format(self.user, mt5.last_error()))
 
@@ -80,10 +83,14 @@ class MT5:
         return account_info
 
     # Display all available symbols with the spread passed
-    def display_symbols(self, elements, sprd=3):
+    def display_symbols(self, elements, spread=10):
         """ 
             Display the symbols with a spread less than te input user, this function also return a list with the rest
-            of attributes from the symbols
+            of attributes from the symbols.
+
+            @param spread: Max value of spread to display symbols
+            @param elements: Str to retrieve symbols e.g (EUR,USD,XAUUSD)
+            @return: pandas DataFrame --> Orders info
         """
 
         lenght = len(elements)
@@ -92,7 +99,7 @@ class MT5:
         string = f'*{elements[0]}*'
         new_list = list()
 
-        # Create a list to concatenate the elems and get the format to pass as parameter
+        # Create a list to concatenate the elements and get the format to pass as parameter
         if not len(elements) == 1:
             for i in range(1, lenght):
                 new_list.append(f'*{elements[i]}*')
@@ -101,50 +108,58 @@ class MT5:
         for elem in new_list:
             final_string += "," + elem
 
-
         self.group_symbols = mt5.symbols_get(group=final_string)
         group_return = list()
 
         for e in self.group_symbols:
-            if not e.spread > sprd:
+            if not e.spread > spread:
                 group_return.append(e)
 
         return group_return
 
     # Display orders opened
     def get_deals(self, ticket=0, show=1):
+        """
+            Display orders from the MT5 history server
+
+            @param ticket: Order ID from the trade
+            @param show: Display DataFrame in the console
+            @return: pandas DataFrame --> Orders info
+        """
         if ticket == 0:
             return pd.DataFrame()
         else:
             try:
                 deals = mt5.history_deals_get(position=int(ticket))
-                df = pd.DataFrame(list(deals), columns=deals[0]._asdict().keys())
+                df: DataFrame = pd.DataFrame(list(deals), columns=deals[0]._asdict().keys())
                 df['time'] = pd.to_datetime(df['time'], unit='s')
                 if show == 1:
                     print(df)
                 return df
             except:
                 print("Error in get deals!")
-        return pd.DataFrame()    
-        
-        
-    def get_positions(self, show=1,s=None,id=None):
+        return pd.DataFrame()
+
+    def get_positions(self, show=1, symbol=None, id=None):
         """
             Get the positions opened to extract the info and close it with the function below
+
+            @param show: Display message in console
+            @param symbol: Symbol name to check for open trades
+            @param id: ID to check for open trades
+            @return: pandas DataFrame
         """
-        if s is not None and id is None:
-            info_position = mt5.positions_get(symbol=s)
-        elif id is not None and s is None:
+        df = pd.DataFrame()
+        if symbol is not None and id is None:
+            info_position = mt5.positions_get(symbol=symbol)
+        elif id is not None and symbol is None:
             info_position = mt5.positions_get(ticket=id)
         else:
-            info_position = mt5.positions_get()                    
+            info_position = mt5.positions_get()
 
         if info_position is None or len(info_position) == 0:
             if show == 1:
                 print("No positions were found!")
-                df = pd.DataFrame()
-            else:
-                df = pd.DataFrame()
 
         elif len(info_position) > 0:
             df = pd.DataFrame(list(info_position), columns=info_position[0]._asdict().keys())
@@ -152,88 +167,105 @@ class MT5:
         return df
 
     # Send request to open a position
-    def open_position(self,symbol,operation,lot,points=40,comment="Python"):
+    def open_position(self, symbol, operation, lot, points=40, comment="Python"):
         """
-            This method send the request to open a position with the paramateres
-        """        
-        # prepare the request structure        
+            Send the request to the MT5 server to open a trade with args passed.
+
+            @param symbol: Symbol to open the trade
+            @param operation: BUY (1) / SELL (0)
+            @param lot: Size Operation (int)
+            @param points: Points to set up SL/TP or list with SL/TP values
+            @param comment: Comment appears into the MT5 console
+            @return: Order ID (int)
+        """
+        # prepare the request structure
         symbol_info = mt5.symbol_info(symbol)
-        
+
         if symbol_info is None:
-            print(symbol, "not found, can not call order_check()")                        
-        
-        # if the symbol is unavailable in MarketWatch, add it
+            print(symbol, "not found, can not call order_check()")
+
+            # if the symbol is unavailable in MarketWatch, add it
         if not symbol_info.visible:
             print(symbol, "is not visible, trying to switch on")
-            if not mt5.symbol_select(symbol,True):
-                print("symbol_select({}}) failed, exit",symbol)                                
-                
-        point = mt5.symbol_info(symbol).point        
+            if not mt5.symbol_select(symbol, True):
+                print("symbol_select({}}) failed, exit", symbol)
+
+        point = mt5.symbol_info(symbol).point
         deviation = 20
-                        
-        price = mt5.symbol_info_tick(symbol).ask if operation == 1 else  mt5.symbol_info_tick(symbol).bid
-        decimal_places = len(str(price).split(".")[1])        
+
+        price = mt5.symbol_info_tick(symbol).ask if operation == 1 else mt5.symbol_info_tick(symbol).bid
+        decimal_places = len(str(price).split(".")[1])
         # Open position based on points
-        if type(points) is int:            
+        if type(points) is int:
             request = {
                 "action": mt5.TRADE_ACTION_DEAL,
                 "symbol": symbol,
-                "volume": lot,     
-                "type": mt5.ORDER_TYPE_BUY if operation == 1 else  mt5.ORDER_TYPE_SELL,
+                "volume": lot,
+                "type": mt5.ORDER_TYPE_BUY if operation == 1 else mt5.ORDER_TYPE_SELL,
                 "price": price,
                 "tp": price + (points * point) if operation == 1 else price - (points * point),
-                "sl": round(price - ((points / 2) * point),decimal_places) if operation == 1 else round(price + ((points / 2) * point),decimal_places),
+                "sl": round(price - ((points / 2) * point), decimal_places) if operation == 1 else round(
+                    price + ((points / 2) * point), decimal_places),
                 "deviation": deviation,
-                #"magic": 234000,
+                # "magic": 234000,
                 "comment": comment,
                 "type_time": mt5.ORDER_TIME_GTC,
                 "type_filling": mt5.ORDER_FILLING_IOC,
-                }        
-        # Set SL and TP passed
+            }
+            # Set SL and TP passed
         else:
-             request = {
+            request = {
                 "action": mt5.TRADE_ACTION_DEAL,
                 "symbol": symbol,
-                "volume": lot,     
-                "type": mt5.ORDER_TYPE_BUY if operation == 1 else  mt5.ORDER_TYPE_SELL,
+                "volume": lot,
+                "type": mt5.ORDER_TYPE_BUY if operation == 1 else mt5.ORDER_TYPE_SELL,
                 "price": price,
                 "tp": points[1],
                 "sl": points[0],
                 "deviation": deviation,
-                #"magic": 234000,
+                # "magic": 234000,
                 "comment": comment,
                 "type_time": mt5.ORDER_TIME_GTC,
                 "type_filling": mt5.ORDER_FILLING_IOC,
-                }  
-            
-        # send a trading request
+            }
+
+        # Send a trading request
         result = mt5.order_send(request)
         # check the execution result
-        print("1. order_send(): by {} {} lots at {} with deviation={} points".format(symbol,lot,price,deviation))        
+        print("1. order_send(): by {} {} lots at {} with deviation={} points".format(symbol, lot, price, deviation))
         if result is None:
             print("2. order_send failed, no response received")
             return 0
-        elif result.retcode != mt5.TRADE_RETCODE_DONE:                                                   
+        elif result.retcode != mt5.TRADE_RETCODE_DONE:
             print("2. order_send failed, retcode={}".format(result.retcode))
             if result.retcode == 10031:
-                print("Trade Server connection lost")  
+                print("Trade Server connection lost")
             elif result.retcode == 10019:
-                print("Lack of free margin to execute the Order")                                 
+                print("Lack of free margin to execute the Order")
                 return 10019
-            # request the result as a dictionary and display it element by element
-            #result_dict=result._asdict()    
-            return 0                                                                           
+            return 0
         return np.int64(result.order)
+
     # Send request to close position
-    def close_position(self, stock, ticket, type_order, vol, comment="Close",display=False):
-        if (type_order == 1):
+    def close_position(self, symbol, ticket, type_order, vol, comment="Close", display=False):
+        """
+            Close Open trade from MT5 Server
+
+            @param symbol: Name of the Symbol
+            @param ticket: ID of the trade
+            @param type_order: BUY (1) or SELL (0)
+            @param vol: Size of the trade
+            @param comment: Comment to add to the order
+            @param display: Display in console
+        """
+        if type_order == 1:
             request_close = {
                 "action": mt5.TRADE_ACTION_DEAL,
-                "symbol": stock,
+                "symbol": symbol,
                 "volume": vol,
                 "type": mt5.ORDER_TYPE_SELL,
                 "position": int(ticket),
-                "price": mt5.symbol_info_tick(stock).bid,
+                "price": mt5.symbol_info_tick(symbol).bid,
                 "deviation": 20,
                 # "magic": 0,
                 "comment": comment,
@@ -246,11 +278,11 @@ class MT5:
         else:
             request_close = {
                 "action": mt5.TRADE_ACTION_DEAL,
-                "symbol": stock,
+                "symbol": symbol,
                 "volume": vol,
                 "type": mt5.ORDER_TYPE_BUY,
                 "position": int(ticket),
-                "price": mt5.symbol_info_tick(stock).ask,
+                "price": mt5.symbol_info_tick(symbol).ask,
                 "deviation": 20,
                 # "magic": 0,
                 "comment": "python script close",
@@ -262,7 +294,17 @@ class MT5:
                 print(result)
 
     # Get data for the selected symbols and timeframe
-    def data_range(self, symbol, temp, times, plot=0):
+    def get_data(self, symbol, temp, times, plot=0):
+        """
+            Retrieve data from the symbol passed from current time less the number of periods passed
+
+        @param symbol: Name of the symbol to get data
+        @param temp: TimeFrame to retrieve data.
+        @param times: Number of periods to retrieve from current time.
+        @param plot: Plot Data in a graph
+        @return: pandas DataFrame --> candles information
+        """
+
         self.utc_to = dt.datetime.now(tz=self.timezone) + dt.timedelta(hours=8)
         self.utc_from = self.utc_to - dt.timedelta(minutes=times)
         self.bars = times
@@ -272,24 +314,37 @@ class MT5:
         # Convert time in seconds into the datetime format
         rates_frame['time'] = pd.to_datetime(rates_frame['time'], unit='s')
         rates_frame["time"] = rates_frame["time"] - pd.Timedelta(hours=9)
-        rates_frame = rates_frame.set_index('time')        
+        rates_frame = rates_frame.set_index('time')
         # Plot the graph
         if not plot == 0:
             mpl.plot(rates_frame, type="candle", style="classic", title=str(symbol + " " + temp))
         return rates_frame
-    def calculate_profit(self,symbol,points,lot,order):                
-        point=mt5.symbol_info(symbol).point
-        symbol_tick=mt5.symbol_info_tick(symbol)
-        ask=symbol_tick.ask
-        bid=symbol_tick.bid        
+
+    def calculate_profit(self, symbol, points, lot, order):
+        """
+            Calculate estimated profit or loss by symbol, lot size, order and points.
+
+        @param symbol: Name of the symbol to estimate profit/lots.
+        @param points: Number of points.
+        @param lot: Size  operation
+        @param order: BUY(1) or SELL (0)
+        @return: int --> estimated profit/loss
+
+        """
+        point = mt5.symbol_info(symbol).point
+        symbol_tick = mt5.symbol_info_tick(symbol)
+        ask = symbol_tick.ask
+        bid = symbol_tick.bid
         if order == 1:
-            profit=mt5.order_calc_profit(mt5.ORDER_TYPE_BUY,symbol,lot,ask,ask+points*point)                    
+            profit = mt5.order_calc_profit(mt5.ORDER_TYPE_BUY, symbol, lot, ask, ask + points * point)
         else:
-            profit=mt5.order_calc_profit(mt5.ORDER_TYPE_SELL,symbol,lot,bid,bid-points*point)
+            profit = mt5.order_calc_profit(mt5.ORDER_TYPE_SELL, symbol, lot, bid, bid - points * point)
         return profit
+
     # Close the connection with MT5
     def close(self):
+        """
+            Close connection to the server
+        """
         mt5.shutdown()
-        print("Closed Connection!")        
-    
-    
+        print("Closed Connection!")

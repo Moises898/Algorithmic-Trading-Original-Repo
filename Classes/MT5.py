@@ -294,20 +294,20 @@ class MT5:
                 print(result)
 
     # Get data for the selected symbols and timeframe
-    def get_data(self, symbol, temp, times, plot=0):
+    def get_data(self, symbol, temp, n_periods, plot=0):
         """
             Retrieve data from the symbol passed from current time less the number of periods passed
 
         @param symbol: Name of the symbol to get data
         @param temp: TimeFrame to retrieve data.
-        @param times: Number of periods to retrieve from current time.
-        @param plot: Plot Data in a graph
+        @param n_periods: Number of periods to retrieve from current time.
+        @param plot: Display a chart in japanese format
         @return: pandas DataFrame --> candles information
         """
 
         self.utc_to = dt.datetime.now(tz=self.timezone) + dt.timedelta(hours=8)
-        self.utc_from = self.utc_to - dt.timedelta(minutes=times)
-        self.bars = times
+        self.utc_from = self.utc_to - dt.timedelta(minutes=n_periods)
+        self.bars = n_periods
         self.rates = mt5.copy_rates_from(symbol, self.time_frames[temp], self.utc_from, self.bars)
         # Create a DataFrame from the obtained data
         rates_frame = pd.DataFrame(self.rates)

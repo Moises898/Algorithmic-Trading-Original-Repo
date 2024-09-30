@@ -3,6 +3,7 @@ from math import atan2, pi
 import pandas as pd
 import numpy as np
 import warnings
+
 warnings.filterwarnings("ignore")
 
 
@@ -34,7 +35,7 @@ class Technical:
         self.get_previous_bar_trend()
         self.get_current_bar_trend()
         self.df = self.df.copy()
-        self.df["hl2"] = (self.df["high"]+self.df["low"])/2
+        self.df["hl2"] = (self.df["high"] + self.df["low"]) / 2
 
     # Return the direction of each bar
     def get_bars_direction(self, lenght):
@@ -62,7 +63,7 @@ class Technical:
         return directions
 
     # Exponential Moving Averge indicator
-    def EMA(self, entry="close", period=12,deviation=-1):
+    def EMA(self, entry="close", period=12, deviation=-1):
         """
         Calculate an Exponential Moving Average based on the args passed.
 
@@ -76,12 +77,12 @@ class Technical:
         """
         df = self.df
         ema = ta.EMA(df[entry], timeperiod=period)
-        if deviation > 0:            
+        if deviation > 0:
             ema = ema[:-deviation]
         return ema
 
     # Simple Moving Averge indicator
-    def SMA(self, entry="close", period=12,deviation=-1):
+    def SMA(self, entry="close", period=12, deviation=-1):
         """
         Calculate a Simple Moving Average based on the args passed.
 
@@ -95,10 +96,10 @@ class Technical:
         """
         df = self.df
         sma = ta.SMA(df[entry], timeperiod=period)
-        if deviation > 0:            
+        if deviation > 0:
             sma = sma[:-deviation]
         return sma
-        
+
     # Calculate middle price in the selected period
     def calculate_middle_price(self, period=10):
         """
@@ -162,8 +163,8 @@ class Technical:
         self.PREV_DIRECTION = direction(PREV_BAR)
         self.PREV_DIRECTION_2 = direction(PREV_BAR_2)
         self.PREV_BODY = PREV_BAR["close"] - \
-            PREV_BAR["open"] if self.PREV_DIRECTION == 1 else PREV_BAR["open"] - \
-            PREV_BAR["close"]
+                         PREV_BAR["open"] if self.PREV_DIRECTION == 1 else PREV_BAR["open"] - \
+                                                                           PREV_BAR["close"]
         # BUY
         if self.PREV_DIRECTION == 1:
             self.MECHA_SUPERIOR = self.PREV_BAR_HIGH - self.PREV_BAR_CLOSE
@@ -195,8 +196,8 @@ class Technical:
             df["high"], df["low"]).iloc[-1]
         self.CURR_DIRECTION = direction(CURRENT_BAR)
         self.CURR_BODY = CURRENT_BAR["close"] - \
-            CURRENT_BAR["open"] if self.CURR_DIRECTION == 1 else CURRENT_BAR["open"] - \
-            CURRENT_BAR["close"]
+                         CURRENT_BAR["open"] if self.CURR_DIRECTION == 1 else CURRENT_BAR["open"] - \
+                                                                              CURRENT_BAR["close"]
         # BUY
         if self.CURR_DIRECTION == 1:
             self.MECHA_SUPERIOR_CURR = self.CURR_BAR_HIGH - self.CURR_BAR_CLOSE
@@ -217,7 +218,7 @@ class Technical:
         Calculate the trend based on each bar direction for the selected window of periods.
 
         Args:
-            n_periods (int, optional): Number of period to perfom the calculation . Defaults to 0.
+            n_periods (int, optional): Number of period to perform the calculation . Defaults to 0.
 
         Returns:
             int :  Uptrend (1) or Downtrend (0)
@@ -230,7 +231,7 @@ class Technical:
         }
         # Loop to calculate the direction of each bar
         for bar in range(len(df.iloc[-n_periods:])):
-            dir = direction(df.iloc[-n_periods+bar])
+            dir = direction(df.iloc[-n_periods + bar])
             if dir == 1:
                 trend_counters["bullish_counter"] = trend_counters["bullish_counter"] + 1
             elif dir == 0:
@@ -255,7 +256,7 @@ class Technical:
         Calculate the trend based on a trend line from for the selected window of periods. Close values are used to calculate the trendline.
 
         Args:
-            n_periods (int, optional): Number of period to perfom the calculation. Defaults to 0.
+            n_periods (int, optional): Number of period to perform the calculation. Defaults to 0.
 
         Returns:
             int :  Uptrend (1) or Downtrend (0)
@@ -279,7 +280,7 @@ class Technical:
         Calculate the chopiness index values.
 
         Args:
-            lookback (int, optional): Numeber of periods to rolling. Defaults to 6.            
+            lookback (int, optional): Number of periods to rolling. Defaults to 6.
 
         Returns:
             list : CHOP values for each period of time.
@@ -299,10 +300,11 @@ class Technical:
         highh = df["high"].rolling(lookback).max()
         lowl = df["low"].rolling(lookback).min()
         ci = 100 * np.log10((atr.rolling(lookback).sum()) /
-                            (highh - lowl)) / np.log10(lookback)            
-        return ci 
+                            (highh - lowl)) / np.log10(lookback)
+        return ci
 
-    # Trend Angle
+        # Trend Angle
+
     def calculate_trend_angle(self, n_periods=50):
         """
         Calculate the angle of the current trend from the selected window of time.
@@ -319,7 +321,7 @@ class Technical:
             df = df.iloc[-n_periods:]
             df.reset_index(inplace=True)
         Y1 = df["close"].iloc[0]
-        Y2 = df["close"].iloc[len(df)-1]
+        Y2 = df["close"].iloc[len(df) - 1]
         ANGLE = atan2((Y2 - Y1), 0.10) * 180 / pi
         return ANGLE
 
@@ -334,19 +336,20 @@ class Technical:
         Returns:
             float, float : Lowest and Highest values
         """
-        df = self.df        
+        df = self.df
         highest_high = ta.MAX(df["high"], timeperiod=lenght)
-        lowest_low = ta.MIN(df["low"], timeperiod=lenght)        
-        return lowest_low[-1],highest_high[-1]    
+        lowest_low = ta.MIN(df["low"], timeperiod=lenght)
+        return lowest_low[-1], highest_high[-1]
 
-    # SUPER TREND FUNCTION THAT RETURN DIRECTION OF SIGNAL
+        # SUPER TREND FUNCTION THAT RETURN DIRECTION OF SIGNAL
+
     def calculate_super_trend(self, atr_period=15, multiplier=3):
         """
-        Calculate the super trend indicator.
+        Calculate super trend indicator values and return the direction.
 
         Args:
             atr_period (int, optional): Number of periods to take to perform the ATR calculation. Defaults to 15.
-            multiplier (int, optional): Multiplier to take to perform the calculation. Defaults to 3.
+            multiplier (float, optional): Multiplier to take to perform the calculation. Defaults to 3.
 
         Returns:
             int : Uptrend (1) or Downtrend (0)
@@ -364,26 +367,26 @@ class Technical:
         supertrend = [True] * len(df)
 
         for i in range(1, len(df.index)):
-            curr, prev = i, i-1
-            # if current close price crosses above upperband
+            curr, prev = i, i - 1
+            # if current close price crosses above upper band
             if close[curr] > final_upperband[prev]:
                 supertrend[curr] = True
-            # if current close price crosses below lowerband
+            # if current close price crosses below lower band
             elif close[curr] < final_lowerband[prev]:
                 supertrend[curr] = False
             # else, the trend continues
             else:
                 supertrend[curr] = supertrend[prev]
                 # adjustment to the final bands
-                if supertrend[curr] == True and final_lowerband[curr] < final_lowerband[prev]:
+                if supertrend[curr] and final_lowerband[curr] < final_lowerband[prev]:
                     final_lowerband[curr] = final_lowerband[prev]
-                if supertrend[curr] == False and final_upperband[curr] > final_upperband[prev]:
+                if not supertrend[curr] and final_upperband[curr] > final_upperband[prev]:
                     final_upperband[curr] = final_upperband[prev]
 
             # to remove bands according to the trend direction
-            if supertrend[curr] == True:
+            if supertrend[curr]:
                 final_upperband[curr] = np.nan
             else:
                 final_lowerband[curr] = np.nan
-        
+
         return 1 if supertrend[-1] else 0

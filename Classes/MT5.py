@@ -68,6 +68,15 @@ class MT5:
         # Get object with all details
 
     def account_details(self, show=0):
+        """
+        Returns an object if type AccountInfo from Metatarder5 library.
+
+        Args:
+            show (int, optional): Display object to the console. Defaults to 0.
+
+        Returns:
+            AccountInfo: Object with account information, acces values through attributes.
+        """
         # authorized = mt5.login(self.user, password=self.password, server=self.server)
         # if authorized:
         account_info = None

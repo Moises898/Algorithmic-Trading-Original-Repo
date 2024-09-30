@@ -13,14 +13,14 @@ def TREND_DIRECTION(df_M1, index=0):
     M1_technical = Technical(df_M1.iloc[index:])
 
     # BUY COUNTER
-    BUY = 1 if M1_technical.TREND_BY_TRENDLINE() == 1 else 0
-    BUY += 1 if M1_technical.TREND_BY_BARS_DIRECTION() == 1 else 0
-    BUY += 1 if M1_technical.PREVIOUS_BAR() == 1 else 0
+    BUY = 1 if M1_technical.calculate_trend_by_trendline() == 1 else 0
+    BUY += 1 if M1_technical.calculate_trend_by_bars_trend() == 1 else 0
+    BUY += 1 if M1_technical.get_previous_bar_trend() == 1 else 0
 
     # SELL COUNTER
-    SELL = 1 if M1_technical.TREND_BY_TRENDLINE() == 0 else 0
-    SELL += 1 if M1_technical.TREND_BY_BARS_DIRECTION() == 0 else 0
-    SELL += 1 if M1_technical.PREVIOUS_BAR() == 0 else 0
+    SELL = 1 if M1_technical.calculate_trend_by_trendline() == 0 else 0
+    SELL += 1 if M1_technical.calculate_trend_by_bars_trend() == 0 else 0
+    SELL += 1 if M1_technical.get_previous_bar_trend() == 0 else 0
 
     if SELL or BUY >= 3:
         if SELL > BUY:
@@ -111,7 +111,7 @@ def TRAILLING_STOP(s,order,tickets,conn, points,profit,risk,pnl,apply_both_direc
     counter = 0    
     counter_sl = 0    
     while not flag_to_stop.is_set() and df.shape[0] > 0:
-        current_price =  conn.data_range(s, "M1", 1)["close"].iloc[0]      
+        current_price =  conn.get_data(s, "M1", 1)["close"].iloc[0]
         current_pl = conn.account_details().profit + pnl
         sl = df["sl"].iloc[0]   
         difference = (current_price - price_open) if order == 1 else (price_open - current_price)        
@@ -216,7 +216,7 @@ def TRAILLING_STOP_FIBONACCI(s,order,tickets,conn,levels,profit,risk,pnl,flag_to
     sl1_partial = False
     # Loop until the trade is closed
     while not flag_to_stop.is_set() and df.shape[0] > 0:
-        current_price =  conn.data_range(s, "M1", 1)["close"].iloc[0]      
+        current_price =  conn.get_data(s, "M1", 1)["close"].iloc[0]
         current_pl = conn.account_details().profit + pnl
         try: 
             # If partial close was enabled close one trade per case

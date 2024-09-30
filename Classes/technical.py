@@ -37,7 +37,7 @@ class Technical:
         self.df["hl2"] = (self.df["high"]+self.df["low"])/2
 
     # Return the direction of each bar
-    def get_bar_direction(self, lenght):
+    def get_bars_direction(self, lenght):
         """
         Determine the direction of each bar from the dataFrame based on the open and close price.
 

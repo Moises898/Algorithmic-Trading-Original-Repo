@@ -148,7 +148,7 @@ def single_trade_open(object,conn,symbol_to_trade,partial_close,risk,target_prof
                 print("Waiting until trades closes")
                 sleep(60)
         try:            
-            M1 = conn.data_range(symbol_to_trade, timeFrame, 100)
+            M1 = conn.get_data(symbol_to_trade, timeFrame, 100)
         except Exception as e:
             print("Data range failed:", e)
             break
@@ -162,14 +162,14 @@ def single_trade_open(object,conn,symbol_to_trade,partial_close,risk,target_prof
                 # If the random forest was enabled compare the signals          
                 if entry != 2 and entry_from_model != entry:  
                     # Determine the entry by a trendline by the same depth from the fibonacci
-                    trend = Technical(M1).TREND_BY_BARS_DIRECTION(-fibonacci_depth) #TREND_BY_TRENDLINE(fibonacci_depth)  
+                    trend = Technical(M1).calculate_trend_by_bars_trend(-fibonacci_depth) #TREND_BY_TRENDLINE(fibonacci_depth)  
                     if trend == entry:
                         print(f"Normal entry will be opened {entry}")
                     else:      
                         print("Entry will be reversed: ", entry," -> ", entry_from_model)
                         entry = entry_from_model
             if position:                     
-                lowest,highest = Technical(M1).LOWEST_AND_HIGHEST(fibonacci_depth) 
+                lowest,highest = Technical(M1).get_lowest_and_highest(fibonacci_depth) 
                 difference = abs(highest - lowest)
                 fibonacci_levels = {
                     11.2: .112*difference,
@@ -282,7 +282,7 @@ def multiple_entries_open(object,conn,symbol_to_trade,risk,target_profit,entries
             print("Maximun trades reached, no more trades will be opened")
             open_trades = False                  
         try:            
-            M1 = conn.data_range(symbol_to_trade, timeFrame, 100)
+            M1 = conn.get_data(symbol_to_trade, timeFrame, 100)
         except Exception as e:
             print("Data range failed:", e)
             break
@@ -342,18 +342,18 @@ def EMA_CROSSING(df,offset=3, ema_open=15, ema_period=3,reverse=False,volume_fil
     operation = False
     trend_for_operation = 2
     M1_technical = Technical(df)
-    series_bar = M1_technical.RETURN_DIRECTION(30) 
+    series_bar = M1_technical.get_bars_direction(30)
     counters = bar_trend_ocurrencies(series_bar)
     if len(counters) > 2:
         total = 30 - counters[2]
     else:
         total = 30    
-    if M1_technical.CHOP(CHOP_LENGHT) < CHOP_LIMIT:                
+    if M1_technical.calculate_chopiness_index(CHOP_LENGHT)[-1] < CHOP_LIMIT:                
         # Set PARAMETERS         
         EMA_LOW = M1_technical.EMA(entry="low", period=ema_period, deviation=offset)
         EMA_HIGH = M1_technical.EMA(entry="high", period=ema_period, deviation=offset)
         EMA_OPEN = M1_technical.EMA(entry="open", period=ema_open, deviation=-1)
-        supertrend = M1_technical.SUPER_TREND(ATR_LENGTH, FACTOR)          
+        supertrend = M1_technical.calculate_super_trend(ATR_LENGTH, FACTOR)          
         if (CROSSING(EMA_OPEN, EMA_HIGH, 0)) and supertrend == 1:            
             # SELL Under
             if counters[-1] / total >= .35:

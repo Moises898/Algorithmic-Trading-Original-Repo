@@ -13,7 +13,7 @@ def backtest_strategy(conn,n_periods,symbol,reverse,points,apply_volume_filter=F
     FINAL_EMA_LH = EMA_LH_XAUUSD if symbol == "XAUUSD" else EMA_LH_EURUSD    
     if dataFrame is None:        
         candles_lenght = n_periods + 100
-        df_testing = conn.data_range(symbol,"M1",candles_lenght)        
+        df_testing = conn.get_data(symbol, "M1", candles_lenght)
         start = 100
         iterations = n_periods
     else:
@@ -52,7 +52,7 @@ def backtest_strategy(conn,n_periods,symbol,reverse,points,apply_volume_filter=F
                     df_testing[column] = prices                 
                     # Calculate SL and TP
                     if fibonacci:
-                        lowest,highest = Technical(df_for_strategy).LOWEST_AND_HIGHEST(10)                     
+                        lowest,highest = Technical(df_for_strategy).get_lowest_and_highest(10)                     
                         difference = abs(highest - lowest)
                         fibonacci_levels = {
                             23.6: .236 * difference,
@@ -85,7 +85,7 @@ def backtest_strategy(conn,n_periods,symbol,reverse,points,apply_volume_filter=F
                         # If the random forest was enabled compare the signals          
                         if entry != 2 and prediction != entry:  
                             # Determine the entry by a trendline by the same depth from the fibonacci
-                            trend = Technical(df_for_strategy).TREND_BY_BARS_DIRECTION(-10) #TREND_BY_TRENDLINE(fibonacci_depth)  
+                            trend = Technical(df_for_strategy).calculate_trend_by_bars_trend(-10) #TREND_BY_TRENDLINE(fibonacci_depth)  
                             if trend != entry:                    
                                 entry = 0 if entry == 1 else 1 
                         flag_randomForest = True                                             

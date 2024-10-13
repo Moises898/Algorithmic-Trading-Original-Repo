@@ -1,7 +1,7 @@
 # ATLAS Algorithmic Trading
 
 - [ATLAS Algorithmic Trading](#atlas-algorithmic-trading)
-- [MT5 Class](#mt5-class)
+- [MT5](#mt5)
   - [Constructor Method](#constructor-method)
     - [Parameters](#parameters)
     - [Example:](#example)
@@ -29,7 +29,7 @@
   - [calculate\_profit(symbol,points,lot,order)](#calculate_profitsymbolpointslotorder)
     - [Parameters](#parameters-6)
     - [Examples](#examples-1)
-- [Technical Class](#technical-class)
+- [Technical](#technical)
   - [Constructor method](#constructor-method-1)
     - [Example:](#example-8)
   - [get\_bars\_direction(lenght)](#get_bars_directionlenght)
@@ -71,6 +71,9 @@
   - [calculate\_super\_trend(atr\_period=15, multiplier=3)](#calculate_super_trendatr_period15-multiplier3)
     - [Parameters](#parameters-17)
     - [Example:](#example-22)
+- [Live Trading](#live-trading)
+  - [On Tick](#on-tick)
+    - [Parameters:](#parameters-18)
 
 <h2>Introduction</h2>
 <p>This module use the Metatatrader5 library to connect with the platform, the functions were adapted to launch operations with own parameters and conditions.To know more information about the functions of Metatrade5, please refer the next documentation:<br> 
@@ -80,7 +83,7 @@ https://www.mql5.com/en/docs/integration/python_metatrader5 </p>
 
 
 
-# MT5 Class
+# MT5
 
 This class is a wrapper for the MT5 library that contains all related methods to interact with Metatrader 5 such as: 
 
@@ -283,7 +286,7 @@ In this example the name of the stock was manually passed, remember use the apro
     
 
 
-# Technical Class
+# Technical 
 Contains multiple types of technical analysis, it is based in TA-Lib and modified for personal use with extra features.
 
 To know more information about the functions of TA-Lib, please refer the next documentation:
@@ -474,6 +477,29 @@ Calculate the Chopiness Index value for each period of time to determine when ma
 ### Example:
 
     trend_by_super_trend = Technical.calculate_super_trend(10,.5)
+
+
+# Live Trading
+
+This class contains the strategy implementations in a Live Trading mode.
+
+## On Tick
+This method is used to replicate each movement in the market, every time the market has a movement, the on tick method call the logic inside of it and look for entries.
+
+### Parameters:
+<ul>
+<li>mt5_connection (MT5 Class): Object created with the connection to the MT5 server</li>
+<li>symbol (str): Name of the symbol to execute the strategy</li>
+<li>user_parameters (dict): Dictionary with key values options for Strategy selected</li>
+    <ul>
+    <li>profit (float): Target profit for session</li>
+    <li>loss (float): Maximum loss per session</li>
+    <li>max_trades (int): Max number of trades to open per session</li>
+    <li>dynamic_points (boolean): Determine SL / TP automatically.</li>
+    <li>points (int): Set SL / TP based on user parameters</li>
+    </ul>
+</ul>
+
 
 
 

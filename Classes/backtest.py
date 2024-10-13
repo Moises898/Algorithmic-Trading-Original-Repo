@@ -9,8 +9,8 @@ def backtest_strategy(conn,n_periods,symbol,reverse,points,apply_volume_filter=F
     """
         Backtest the strategy to detect entries in the past, the method will return a dictionary with the entry price and the operation type (BUY/SELL)                
     """
-    FINAL_EMA_OPEN = EMA_OPEN_XAUUSD if symbol == "XAUUSD" else EMA_OPEN_EURUSD
-    FINAL_EMA_LH = EMA_LH_XAUUSD if symbol == "XAUUSD" else EMA_LH_EURUSD    
+    FINAL_EMA_OPEN = 4 if symbol == "XAUUSD" else 4
+    FINAL_EMA_LH = 4 if symbol == "XAUUSD" else 2    
     if dataFrame is None:        
         candles_lenght = n_periods + 100
         df_testing = conn.get_data(symbol, "M1", candles_lenght)
@@ -36,7 +36,7 @@ def backtest_strategy(conn,n_periods,symbol,reverse,points,apply_volume_filter=F
         try:    
             df_for_strategy = df_testing.iloc[start-100:start]                             
             # Simulate entries
-            position, entry = EMA_CROSSING(df=df_for_strategy,offset= OFFSET, ema_open=FINAL_EMA_OPEN,ema_period= FINAL_EMA_LH,reverse=reverse,volume_filter=apply_volume_filter,show=False)
+            position, entry = EMA_CROSSING(df=df_for_strategy,offset= 3, ema_open=FINAL_EMA_OPEN,ema_period= FINAL_EMA_LH,reverse=reverse,volume_filter=apply_volume_filter,show=False)
             if position and not trade_open:              
                 ####
                 flag_randomForest = False            

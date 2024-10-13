@@ -312,20 +312,3 @@ def STRONG_TREND(df,sma=6,bars=30,threshold=.85):
     above = len(np.where( SMA_CLOSE[-bars:] < df["close"].iloc[-bars:])[0])
     under = len(np.where( SMA_CLOSE[-bars:] > df["close"].iloc[-bars:])[0])    
     return (above / bars) > threshold or (under/ bars) > threshold
-
-def parameters(s):
-    if s == "EURUSD":
-        EMA_LENGHT = 3
-        SMA_LENGHT = 6
-        CHOP_LENGHT = 8
-        OFFSET = 3
-        CHOP_LIMIT = 100
-        FACTOR = .5
-    else:
-        EMA_LENGHT = 3
-        SMA_LENGHT = 6
-        CHOP_LENGHT = 8
-        OFFSET = 2
-        CHOP_LIMIT = 50
-        FACTOR = .5
-    return CHOP_LENGHT, CHOP_LIMIT, SMA_LENGHT, EMA_LENGHT, OFFSET, FACTOR

@@ -280,10 +280,7 @@ class MT5:
                 "comment": comment,
                 "type_time": mt5.ORDER_TIME_GTC,
                 "type_filling": mt5.ORDER_FILLING_IOC,  # mt5.ORDER_FILLING_RETURN,
-            }
-            result = mt5.order_send(request_close)
-            print(result)
-
+            }        
         else:
             request_close = {
                 "action": mt5.TRADE_ACTION_DEAL,
@@ -298,9 +295,9 @@ class MT5:
                 "type_time": mt5.ORDER_TIME_GTC,
                 "type_filling": mt5.ORDER_FILLING_IOC,  # mt5.ORDER_FILLING_RETURN,
             }
-            result = mt5.order_send(request_close)
-            if display:
-                print(result)
+        result = mt5.order_send(request_close)
+        if display:
+            print(result)
 
     # Get data for the selected symbols and timeframe
     def get_data(self, symbol, temp, n_periods, plot=0):

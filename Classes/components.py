@@ -89,7 +89,7 @@ def help_screen(frame):
                                                        anchor="center")
     frame.main_frame.message2.grid(row=1, column=0, padx=10, pady=0, sticky="ew")  
     
-    my_image = customtkinter.CTkImage(light_image=Image.open(r"C:\Users\Moy\Documents\Python\Algorithmic Trading\HFT\assets\images\information.png"),size=(125, 125))
+    my_image = customtkinter.CTkImage(light_image=Image.open(r"assets\images\information.png"),size=(125, 125))
     image_label = customtkinter.CTkLabel(frame.main_frame, image=my_image, text="")  # display image with a CTkLabel
     image_label.grid(row=2,column=0, sticky="nsew",padx=(15, 15), pady=(0, 60))
                              

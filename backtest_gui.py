@@ -68,7 +68,7 @@ def plot_selected_trade(row):
         )
 
     data_from_entry = data_from_entry.reset_index()
-    data_from_entry['time'] = pd.to_datetime(data_from_entry['time'], unit='s')
+    data_from_entry['time'] = pd.to_datetime(data_from_entry['time'])
     df_entry = pd.DataFrame({"time": data_from_entry["time"].values,
                              "Entry Price": [id_mapping[row["ID"]] for _ in range(data_from_entry.shape[0])]})
 
@@ -92,11 +92,12 @@ def on_row_click(row):
     table.footer[1] = id_mapping[row["ID"]]
 
 
-def execute_backtest(connection, symbol, n_periods, points=100, automatic_points=False, use_random_forest=False,
-                     volume_filter=False, reverse_entries=False):
+def execute_backtest(connection, symbol, n_periods, points=100,depth=11, automatic_points=False, use_random_forest=False,
+                    reverse_entries=False,**kwargs):
+    dataFrame = kwargs.get("dataFrame",None)        
     # Execute with custom parameters
-    operations, _ = backtest_strategy(connection, n_periods, symbol, reverse_entries, points, volume_filter,
-                                      fibonacci=automatic_points, model=use_random_forest)
+    operations, _ = backtest_strategy(connection, n_periods, symbol, reverse_entries, points,depth=depth,
+                                      fibonacci=automatic_points, model=use_random_forest,dataFrame=dataFrame)
     counters, results = analyze_results(operations)
     try:
         win_rate = counters['tp_counter'] / sum(counters.values())
@@ -171,7 +172,7 @@ if __name__ == '__main__':
     password = "821AZ!$p5x"
     server = "demoUK-mt5.darwinex.com"
     conn = MT5(user, password, server)
-    n_periods = 500
+    n_periods = 1000
     symbol = "XAUUSD"
     # best_settings = optimize_strategy(conn, n_periods, symbol)
     # Start backtest to get the trades
@@ -179,7 +180,7 @@ if __name__ == '__main__':
                                         symbol=symbol,
                                         n_periods=n_periods,
                                         points=400,  # best_settings['best_points'],
-                                        automatic_points=False,  # best_settings['fibonnaci_used'],
+                                        automatic_points=True,  # best_settings['fibonnaci_used'],
                                         use_random_forest=False,  # best_settings['randomForest'],
                                         volume_filter=False,
                                         reverse_entries=True
@@ -196,7 +197,7 @@ if __name__ == '__main__':
         chart.crosshair(mode='normal', vert_color='#FFFFFF', vert_style='dotted',
                         horz_color='#FFFFFF', horz_style='dotted')
         chart.legend(visible=True, font_size=14)
-        backtest_results = get_orders_from_backtesting(trades, symbol, lots=0.1)
+        backtest_results = get_orders_from_backtesting(trades, symbol, lots=0.01)
         table, table_result = generate_tables_of_trades(chart, backtest_results)
         chart.precision(2 if symbol == "XAUUSD" else 4)
         chart.show(block=True)

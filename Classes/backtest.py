@@ -1,58 +1,55 @@
-from Classes.data_operations import *
-from Classes.Strategies import *
-import numpy as np
-from Classes.randomForest import *
+from Classes.Strategies import PARAMETERS,EMA_CROSSING
+from Classes.technical import Technical
+from Classes.randomForest import inputs_for_random_forest, get_prediction
+import pandas as pd
+from datetime import date
+import MetaTrader5 as mt5
 
 DEFAULT_RANGE = lambda x:  range(100, 1200, 100) if x == "XAUUSD" else range(40, 100, 5)
 
-def backtest_strategy(conn,n_periods,symbol,reverse,points,apply_volume_filter=False,candles_per_entry=10,fibonacci=False,model=False,dataFrame=None):
+def backtest_strategy(conn,n_periods,symbol,reverse,points,interval_entries=10,depth=11,fibonacci=False,model=False,dataFrame=None):
     """
         Backtest the strategy to detect entries in the past, the method will return a dictionary with the entry price and the operation type (BUY/SELL)                
-    """
-    FINAL_EMA_OPEN = 4 if symbol == "XAUUSD" else 4
-    FINAL_EMA_LH = 4 if symbol == "XAUUSD" else 2    
+    """    
+    start = 100
+    operations = {} 
+    adjusted_points = points * mt5.symbol_info(symbol).point   
+    final_points = points        
+    
     if dataFrame is None:        
         candles_lenght = n_periods + 100
-        df_testing = conn.get_data(symbol, "M1", candles_lenght)
-        start = 100
+        df_testing = conn.get_data(symbol, "M1", candles_lenght)        
         iterations = n_periods
     else:
-        if dataFrame.shape[0] >= 200:
-            df_testing = dataFrame
-            start = 100
-            iterations = (dataFrame.shape[0] - start)
-        else:
-            print("Rows need to be grater or equal to 200")
-            return None,None
-    df_testing[["Sell","Buy","SL","TP","SL1","TP1"]] = np.nan
-    adjusted_points = points * mt5.symbol_info(symbol).point   
-    final_points = points 
-    operations = {}        
+        if dataFrame.shape[0] < 100:
+            print("Rows need to be greater or equal to 100")
+            return None,None    
+        df_testing = dataFrame            
+        iterations = (dataFrame.shape[0] - start)
+                
+    df_testing[["Sell","Buy","SL","TP","SL1","TP1"]] = np.nan            
     open_prices = df_testing['open'].values
+    values_for_strategy = PARAMETERS(symbol)  
+    entries = ["Sell", "Buy"]
     # Emulate Live Trading     
     index_to_continue = 0   
     trade_open = False
     for i in range(iterations-1):    
         try:    
             df_for_strategy = df_testing.iloc[start-100:start]                             
-            # Simulate entries
-            position, entry = EMA_CROSSING(df=df_for_strategy,offset= 3, ema_open=FINAL_EMA_OPEN,ema_period= FINAL_EMA_LH,reverse=reverse,volume_filter=apply_volume_filter,show=False)
-            if position and not trade_open:              
-                ####
+            # Simulate entries            
+            position, entry = EMA_CROSSING(df=df_for_strategy,offset= values_for_strategy["OFFSET"], ema_open=values_for_strategy["EMA_OPEN"],ema_period=values_for_strategy["EMA_LH"],reverse=reverse,show=False)
+            if position and not trade_open:                              
                 flag_randomForest = False            
                 while True:
-                    # Update the value where signal is generated 
-                    if entry == 0:
-                        column = "Sell"
-                    else:
-                        column = "Buy"
-                    # Entry price
-                    prices = df_testing[column].values                  
-                    prices[start] = open_prices[start]
-                    df_testing[column] = prices                 
+                    # Update the value where signal is generated                     
+                    column = entries[entry]
+                    # Entry price                    
+                    df_testing.at[start, column] = open_prices[start]    
+                    current_price = df_testing.at[start, column]              
                     # Calculate SL and TP
                     if fibonacci:
-                        lowest,highest = Technical(df_for_strategy).get_lowest_and_highest(10)                     
+                        lowest,highest = Technical(df_for_strategy).get_lowest_and_highest(depth)                     
                         difference = abs(highest - lowest)
                         fibonacci_levels = {
                             23.6: .236 * difference,
@@ -61,22 +58,19 @@ def backtest_strategy(conn,n_periods,symbol,reverse,points,apply_volume_filter=F
                             61.8: .618 * difference
                         }                                
                         if entry == 1:                                                        
-                            sl = prices[start] - fibonacci_levels[23.6]
-                            tp1 = prices[start] + fibonacci_levels[50]
-                            tp = prices[start] + fibonacci_levels[61.8]                     
+                            sl = current_price - fibonacci_levels[23.6]                            
+                            tp = current_price + fibonacci_levels[61.8]                     
                         else:                    
-                            sl = prices[start] + fibonacci_levels[23.6]
-                            tp1 = prices[start] - fibonacci_levels[50]
-                            tp = prices[start] - fibonacci_levels[61.8]                                    
+                            sl = current_price + fibonacci_levels[23.6]                            
+                            tp = current_price - fibonacci_levels[61.8]                                    
                     else:
                         decimal_places = len(str(adjusted_points).split(".")[1])
                         sl = df_testing["SL"].values              
                         tp  = df_testing["TP"].values                    
-                        sl = round(prices[start] - (adjusted_points/2),decimal_places) if entry == 1 else round(prices[start] + (adjusted_points/2),decimal_places)
-                        #sl = prices[start] - adjusted_points if entry == 1 else prices[start] + adjusted_points
-                        tp = prices[start] + adjusted_points if entry == 1 else prices[start] - adjusted_points    
-                    points_value = int((max([tp,prices[start]]) - min([tp,prices[start]])) * (100 if symbol == "XAUUSD" else 100_000))                
-                    sl_value = abs(int((max([sl,prices[start]]) - min([sl,prices[start]])) * (100 if symbol == "XAUUSD" else 100_000)))
+                        sl = round(current_price - (adjusted_points/2),decimal_places) if entry == 1 else round(current_price + (adjusted_points/2),decimal_places)                    
+                        tp = current_price + adjusted_points if entry == 1 else current_price - adjusted_points    
+                    points_value = int((max([tp,current_price]) - min([tp,current_price])) * (100 if symbol == "XAUUSD" else 100_000))                
+                    sl_value = abs(int((max([sl,current_price]) - min([sl,current_price])) * (100 if symbol == "XAUUSD" else 100_000)))
                     # Use the model to check entries reversed
                     if model and not flag_randomForest:
                         data = inputs_for_random_forest(df_for_strategy,entry,symbol,points_value)  
@@ -90,9 +84,8 @@ def backtest_strategy(conn,n_periods,symbol,reverse,points,apply_volume_filter=F
                                 entry = 0 if entry == 1 else 1 
                         flag_randomForest = True                                             
                     else:
-                        break
-                ####                             
-                index_to_continue = i + candles_per_entry
+                        break                                          
+                index_to_continue = i + interval_entries
                 trade_open = True                                                    
                 # Add SL and TP to the DF
                 df_testing["SL"] = sl
@@ -101,7 +94,7 @@ def backtest_strategy(conn,n_periods,symbol,reverse,points,apply_volume_filter=F
                 df_for_strategy["SL"] = sl
                 df_for_strategy["TP"] = tp            
                 df_to_plot = df_testing.iloc[start:] 
-                if fibonacci and (points_value < 100 and symbol == "XAUUSD") or (points_value < 40 and symbol == "EURUSD"):
+                if fibonacci and (not (80 <= sl_value <= 500) and symbol == "XAUUSD") or (points_value < 40 and symbol == "EURUSD"):
                         pass
                         #print("Position will be skipped")                   
                 else:
@@ -116,7 +109,7 @@ def backtest_strategy(conn,n_periods,symbol,reverse,points,apply_volume_filter=F
                     # Reset the values of the original dataframe to keep just one value per df
                     df_testing[column] = np.nan  
                     df_testing[["SL","TP"]] = np.nan              
-            # When the loop iterate over candles_per_entry - 1 bars strategy will open new trades again
+            # When the loop iterate over interval_entries - 1 bars strategy will open new trades again
             elif i == index_to_continue - 1:
                 trade_open = False
             start += 1
@@ -257,9 +250,7 @@ def get_orders_from_backtesting(operations,symbol,lots=0.01):
         if key in trades.keys():                                
             df_to_export["Item"] = symbol
             df_to_export["Type"] = "Sell" if operations[key]["type"] == "SELL" else "Buy"
-            df_to_export["OrderNumber"] = i                                    
-            #df_to_export["OpenTime"] = df_to_export["OpenTime"].astype('int64') // 10**6 
-            #df_to_export["OpenTime"] = df_to_export["OpenTime"].dt.tz_localize('UTC').astype('int64') // 10**6 
+            df_to_export["OrderNumber"] = i                                                
             df_to_export["OpenPrice"] = df_to_export["open"]                       
             # Get the Close Price and CloseTime
             for idx, (high, low) in enumerate(zip(df["high"], df["low"])):
@@ -271,8 +262,7 @@ def get_orders_from_backtesting(operations,symbol,lots=0.01):
                     if low <= df_to_export["T/P"].iloc[0] or high >= df_to_export["S/L"].iloc[0]:
                         end = idx
                         break   
-            df_to_export["CloseTime"] = df.reset_index().iloc[end]["time"]
-            #df_to_export["CloseTime"] = df_to_export["CloseTime"].dt.tz_localize('UTC').astype('int64') // 10**6            
+            df_to_export["CloseTime"] = df.reset_index().iloc[end]["time"]            
             df_to_export["ClosePrice"] =  df_to_export["T/P"].iloc[0] if trades[key]["result"] == "WIN" else df_to_export["S/L"].iloc[0]
             # Calculate pips and profit
             if symbol == 'EURUSD':
@@ -294,12 +284,12 @@ def get_orders_from_backtesting(operations,symbol,lots=0.01):
     if len(dfs) > 0:
         final_df = pd.DataFrame(dfs)       
         # Rest of columns
-        final_df['Size'] = 0.01
+        final_df['Size'] = lots
         final_df['Comment'] = "ATLAS Backtest"
         final_df['LotSize'] = 100000
         # Calcular la comisión (10 USD por lote estándar)
         commission_per_lot = 10
-        final_df['Commission'] = 0.01 * commission_per_lot
+        final_df['Commission'] = lots * commission_per_lot
         final_df['Swap'] = 0
         
         return final_df[["OpenTime","OrderNumber","Type","Size","Item","OpenPrice","S/L","T/P","CloseTime","ClosePrice","Swap","Pips","Profit","Comment","LotSize","Commission"]]

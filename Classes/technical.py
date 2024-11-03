@@ -3,6 +3,7 @@ from math import atan2, pi
 import pandas as pd
 import numpy as np
 import warnings
+from collections import Counter
 
 warnings.filterwarnings("ignore")
 
@@ -36,11 +37,10 @@ class Technical:
         self.get_current_bar_trend()
         self.df = self.df.copy()
         self.df["hl2"] = (self.df["high"] + self.df["low"]) / 2
-
-    # Return the direction of each bar
+    # Determine bars direction
     def get_bars_direction(self, lenght):
         """
-        Determine the direction of each bar from the dataFrame based on the open and close price.
+        Determine the direction of each bar from the dataFrame based on the open and close price and return a dict object with each one.
 
         Args:
             lenght (int): Number of periods to get directions from the DataFrame
@@ -60,7 +60,7 @@ class Technical:
             else:
                 # Doji bar
                 directions.append(2)
-        return directions
+        return dict(Counter(directions))
 
     # Exponential Moving Averge indicator
     def EMA(self, entry="close", period=12, deviation=-1):
@@ -303,8 +303,7 @@ class Technical:
                             (highh - lowl)) / np.log10(lookback)
         return ci
 
-        # Trend Angle
-
+    # Trend Angle
     def calculate_trend_angle(self, n_periods=50):
         """
         Calculate the angle of the current trend from the selected window of time.
@@ -355,38 +354,31 @@ class Technical:
             int : Uptrend (1) or Downtrend (0)
         """
         df = self.df
-        high = df['high']
-        low = df['low']
-        close = df['close']
-
+        high, low, close = df['high'].values, df['low'].values, df['close'].values
         atr = ta.ATR(high, low, close, atr_period)
         hl2 = (high + low) / 2
-        final_upperband = upperband = hl2 + (multiplier * atr)
-        final_lowerband = lowerband = hl2 - (multiplier * atr)
+        final_upperband = hl2 + (multiplier * atr)
+        final_lowerband = hl2 - (multiplier * atr)
+        supertrend = np.ones(len(df), dtype=bool)
 
-        supertrend = [True] * len(df)
-
-        for i in range(1, len(df.index)):
-            curr, prev = i, i - 1
-            # if current close price crosses above upper band
-            if close[curr] > final_upperband[prev]:
-                supertrend[curr] = True
-            # if current close price crosses below lower band
-            elif close[curr] < final_lowerband[prev]:
-                supertrend[curr] = False
-            # else, the trend continues
+        for i in range(1, len(df)):
+            # Determine if supertrend switches to uptrend or downtrend
+            if close[i] > final_upperband[i - 1]:
+                supertrend[i] = True
+            elif close[i] < final_lowerband[i - 1]:
+                supertrend[i] = False
             else:
-                supertrend[curr] = supertrend[prev]
-                # adjustment to the final bands
-                if supertrend[curr] and final_lowerband[curr] < final_lowerband[prev]:
-                    final_lowerband[curr] = final_lowerband[prev]
-                if not supertrend[curr] and final_upperband[curr] > final_upperband[prev]:
-                    final_upperband[curr] = final_upperband[prev]
+                supertrend[i] = supertrend[i - 1]
+                # Adjust the bands
+                if supertrend[i]:
+                    final_lowerband[i] = max(final_lowerband[i], final_lowerband[i - 1])
+                else:
+                    final_upperband[i] = min(final_upperband[i], final_upperband[i - 1])
 
-            # to remove bands according to the trend direction
-            if supertrend[curr]:
-                final_upperband[curr] = np.nan
+            # Nullify the opposite band based on the trend direction
+            if supertrend[i]:
+                final_upperband[i] = np.nan
             else:
-                final_lowerband[curr] = np.nan
+                final_lowerband[i] = np.nan
 
-        return 1 if supertrend[-1] else 0
+        return int(supertrend[-1])

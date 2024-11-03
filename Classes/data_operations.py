@@ -1,78 +1,7 @@
-from Classes.technical import Technical
 import MetaTrader5 as mt5
 from time import sleep
 import numpy as np
-from collections import Counter
 from random import choice
-# Function to analyze and return the total points and trend
-def TREND_DIRECTION(df_M1, index=0):
-    """
-        Determine in which direction should open a trend
-    """
-    # Create the objects to analyze
-    M1_technical = Technical(df_M1.iloc[index:])
-
-    # BUY COUNTER
-    BUY = 1 if M1_technical.calculate_trend_by_trendline() == 1 else 0
-    BUY += 1 if M1_technical.calculate_trend_by_bars_trend() == 1 else 0
-    BUY += 1 if M1_technical.get_previous_bar_trend() == 1 else 0
-
-    # SELL COUNTER
-    SELL = 1 if M1_technical.calculate_trend_by_trendline() == 0 else 0
-    SELL += 1 if M1_technical.calculate_trend_by_bars_trend() == 0 else 0
-    SELL += 1 if M1_technical.get_previous_bar_trend() == 0 else 0
-
-    if SELL or BUY >= 3:
-        if SELL > BUY:
-            return 0
-        else:
-            return 1
-    return None
-
-# Send the request to execute the order based on point values
-def SEND_REQUEST_OPEN(s, order, lotaje=0.5, MT5=0, n=5):
-    """"
-        Send request to open postion with the proper size
-    """
-    
-    tickets = []
-    if order == 1:        
-        print("****************** BUY ******************") 
-    else: 
-        print("****************** SELL ******************")
-    if s == "XAUUSD":
-        lotaje = round(lotaje * 1.5, 2)
-        points = 40
-        while len(MT5.get_positions(0)) < n:
-            # SEND REQUEST 
-            s, ticket = MT5.open_position(s, order, lotaje, points)
-            if ticket != 0:
-                tickets.append(ticket)
-    else:
-        lotaje = round(lotaje * 2, 2)
-        points = 65
-        while len(MT5.get_positions(0)) < n:
-            # SEND REQUEST 
-            ticket = MT5.open_position(s, order, lotaje, points)
-            if ticket != 0:
-                tickets.append(ticket)
-    return tickets, order, lotaje
-
-# Close all positions
-def CLOSE_ALL(df, MT5):
-    """"
-        Close all positions, it is used if the program crashed and we need to close all of them
-    """
-    if df.shape[0] == 0:
-        print("No open trades")
-    else:
-        print("Closing all positions!")
-        for i in range(df.shape[0]):
-            ticket = df["ticket"].iloc[i]
-            sym = df["symbol"].iloc[i]
-            type_ord = df["type"].iloc[i]
-            volume = df["volume"].iloc[i]
-            MT5.close_position(sym, ticket, type_ord, volume)
 
 # Adjust the SL every time the price moves certain points 
 def TRAILLING_STOP(s,order,tickets,conn, points,profit,risk,pnl,apply_both_directions=False,flag_to_stop=False,limit=2,partial_close=False,second_trailling=False,dynamic_sl=True):
@@ -102,7 +31,7 @@ def TRAILLING_STOP(s,order,tickets,conn, points,profit,risk,pnl,apply_both_direc
         return boolean    
     point = mt5.symbol_info(s).point  
     symbol_points = (points * point)
-    df = conn.get_positions(0,s=s)
+    df = conn.get_positions(0,symbol=s)
     if df.shape[0] > 0:    
         volume = df["volume"].iloc[0]       
         tp = df["tp"].iloc[0]       
@@ -188,7 +117,7 @@ def TRAILLING_STOP_FIBONACCI(s,order,tickets,conn,levels,profit,risk,pnl,flag_to
         return boolean    
     
     point = mt5.symbol_info(s).point      
-    df = conn.get_positions(0,s=s)    
+    df = conn.get_positions(0,symbol=s)    
     if df.shape[0] > 0:    
         volume = df["volume"].iloc[0]       
         tp = df["tp"].iloc[0]       
@@ -278,6 +207,7 @@ def TRAILLING_STOP_FIBONACCI(s,order,tickets,conn,levels,profit,risk,pnl,flag_to
         sleep(1)     
     if df.shape[0] == 0:
         print("Position Closed")                
+
 # Check for Crossing betewen the 2 MA provided
 def CROSSING(first_series, second_series, crossing):
     """"
@@ -286,29 +216,12 @@ def CROSSING(first_series, second_series, crossing):
         0 -> Cross under
         The first series is used as reference to look for the cross
     """
-    # Crossover
-    if crossing == 1:
-        bool_values = np.greater(first_series[-1], second_series[-1])
-        prev_bool_values = np.less_equal(first_series[-2], second_series[-2])
-        crossing_values = np.logical_and(bool_values, prev_bool_values)
-    # Cross under
-    else:
-        bool_values = np.less(first_series[-1], second_series[-1])
-        prev_bool_values = np.greater_equal(first_series[-2], second_series[-2])
-        crossing_values = np.logical_and(bool_values, prev_bool_values)
-    return crossing_values
-
-# Count ocurrencies in the passed series 
-def bar_trend_ocurrencies(series):
-    counts = Counter(series)
-    counters = {}
-    for value, count in counts.items():
-        counters[value] = count
-    return counters
+     # Define functions based on crossing type
+    current_func = np.greater if crossing == 1 else np.less
+    previous_func = np.less_equal if crossing == 1 else np.greater_equal
     
-def STRONG_TREND(df,sma=6,bars=30,threshold=.85):
-    M1_technical = Technical(df)
-    SMA_CLOSE = M1_technical.SMA(entry="close", period=sma)    
-    above = len(np.where( SMA_CLOSE[-bars:] < df["close"].iloc[-bars:])[0])
-    under = len(np.where( SMA_CLOSE[-bars:] > df["close"].iloc[-bars:])[0])    
-    return (above / bars) > threshold or (under/ bars) > threshold
+    # Evaluate crossing conditions
+    return np.logical_and(
+        current_func(first_series[-1], second_series[-1]),
+        previous_func(first_series[-2], second_series[-2])
+    )

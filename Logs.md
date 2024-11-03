@@ -39,3 +39,16 @@ The strategy will open the trades based on the signals until a max number of tra
 Start cleaning and adding documentation from scracth to the code.
 
 MT5 and Technical Classes already cleaned, add a new file called live_trading where I want to implement a method to call from the GUI and easily apply the parameters passed.
+
+## Update 23/10/2024
+
+Modify on tick and ema_crossinf fucntion to fix the current problem related with the time, need to be tested.
+
+Key argument was implemented in different way in order to simplify the logic.
+
+## 28/10/2024
+
+Live trading multiple trades semi working for dynamic points, update the static points to work in the same way.
+- Fix the multiple threads, when the first interval of time is reached the new interval is not working, causing open multiple entries and reaching the max.
+- Optimize rest of the modules.
+- Work in generate a Q1 performance.

@@ -1,7 +1,7 @@
 import customtkinter
 from Classes.components import *
 from Classes.MT5 import MT5
-from Classes.Strategies import single_trade_open
+from Classes.live_trading import on_tick
 from backtest_gui import *
 import threading
 import requests
@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 from os import environ
 load_dotenv()
 
-class App(customtkinter.CTk):
+class ATLAS(customtkinter.CTk):
     admin = "Moises"
     def __init__(self):
         super().__init__()
@@ -38,16 +38,14 @@ class App(customtkinter.CTk):
         # Connect the closing event
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
     
-    def on_closing(self):
-        # This function will be called when the user tries to close the window    
+    # Close window button
+    def on_closing(self):          
         if not self.stop_thread_flag.is_set() and "active_connection" in globals():
             self.stop_session()
         else:
             self.stop_thread_flag.set()
         # Destroy the window
-        self.destroy()
-   
-        
+        self.destroy()           
     # API Request
     def validate_active_license(self):
         # Simulate response from API    
@@ -71,7 +69,7 @@ class App(customtkinter.CTk):
     
     # Stop Startegy thread
     def stop_session(self): 
-        if positions_open(self.connection):
+        if not self.connection.get_positions(0).empty:
             self.close_postions_flag.set()
             tk.messagebox.showinfo("Information","Active trades will be closed before end the session!")
             sleep(2)                                       
@@ -88,7 +86,7 @@ class App(customtkinter.CTk):
             pass
     # Close trades manually
     def close_entry(self):
-        if positions_open(self.connection,self.symbol):
+        if not self.connection.get_positions(0,symbol=self.symbol).empty:
             self.close_postions_flag.set()
         else:
             tk.messagebox.showinfo("Information","There's no active trades :(")
@@ -96,7 +94,7 @@ class App(customtkinter.CTk):
     def display_buttons(self):
         self.main_frame.grid_columnconfigure((0, 1), weight=1, uniform="column")                 
         # Position Open
-        if positions_open(self.connection,self.symbol):
+        if not self.connection.get_positions(0,symbol=self.symbol).empty:
             self.main_frame.close_position = customtkinter.CTkButton(self.main_frame, text="Close Position",command= self.start_connection)
             self.main_frame.close_position.grid(row=4, column=1,pady=10)                 
     # Screen Triggers
@@ -139,6 +137,7 @@ class App(customtkinter.CTk):
                 if self.connection.connection_state: 
                     global active_connection
                     active_connection = True      
+                    self.initial_balance = self.connection.account_details().balance
                     start_strategy_mt5_screen(self)                               
                     #start_strategy_in_backtest_screen(self)
                     
@@ -151,58 +150,48 @@ class App(customtkinter.CTk):
                             message_2=f"-Make sure you have installed MT5 in your computer.\n-Valid credentials from a MT5 account.\n-Internet connection.\n-If your problem persist please contact us for assistance.\n{e}",
                             command_to_trigger=self.back_main_screen_event)            
         
-    def start_strategy(self):                   
+    def start_strategy(self):                           
+        # Dynamic Values
         self.symbol = self.main_frame.symbols_options.get()
-        self.risk = float(str(self.main_frame.risk_entry.get()).replace("%","")) / 100
         self.profit = float(str(self.main_frame.gain_entry.get()).replace("%","")) / 100
+        self.risk = float(str(self.main_frame.risk_entry.get()).replace("%","")) / 100        
         self.max_trades = int(self.main_frame.max_trades_entry.get())
-        self.partial_close = self.main_frame.partial_close_options.get() == "Enable"
-        self.dynamic_sl = self.main_frame.dynamic_SL_menu.get() == "Enable"        
-        self.positions_entry = int(self.main_frame.positions_entry.get())    
-        self.points = round(int(self.main_frame.points_entry.get()),2)        
+        self.entries_per_trade = int(self.main_frame.positions_entry.get())            
         self.lots = float(self.main_frame.lots_entry.get())  
-        self.fibonacci = self.main_frame.fibonacci_options.get() == "Enable"
+        # Harcoded Values
+        self.strategy = "multiple"             
+        self.depth = 30           
+        self.reverse = True
+        # Strategy Parameters
+        self.strategy_parameters = {
+            "profit": self.initial_balance * self.profit,
+            "loss": self.initial_balance * self.risk,
+            "max_trades": self.max_trades,
+            "dynamic_points":True,
+            "timeFrame":"M1",
+            "entries_per_trade":3,
+            "lots": self.lots,
+            "trailling_stop":True,
+            "partial_close":True,
+            "depth": self.depth,
+            "reverse":self.reverse,
+            "min_points":100            
+        }        
+        
         if self.stop_thread_flag.is_set():
             self.stop_thread_flag.clear()
-        self.close_postions_flag = threading.Event()             
-        periods = 500 
-        # Code below is the implementation of a backtest before run the strategy to train a new random forest and combine with
-        # base model to get better entries (takes lonher to start due the backtest and trainning)                                  
-        # while True:
-        #     if self.symbol == "XAUUSD":
-        #         operations,_ = backtest_strategy(self.connection,periods,self.symbol,False,self.points,fibonacci=self.fibonacci,model=False)            
-        #     else:
-        #         operations,_ = backtest_strategy(self.connection,periods,self.symbol,False,45,fibonacci=False,model=False)            
-        #     _,trades = analyze_results(operations)
-        #     if len(trades) > 10:
-        #         self.X, self.y = format_data_to_train_model(operations,trades,self.symbol)
-        #         recent = train_random_forest(self.X,self.y)
-        #         self.models_combined = ensemble_models(recent,self.X,self.y)
-        #         self.models_combined.fit(self.X,self.y)
-        #         break
-        #     else:
-        #         print("Duplicating")
-        #         periods = periods * 2 
+        self.close_postions_flag = threading.Event()                          
         # Create new thread with the strategy, one single trade
-        self.strategy_thread = threading.Thread(target=single_trade_open,
-                                                args=(self,
-                                                      self.connection,
+        self.strategy_thread = threading.Thread(target=on_tick,
+                                                args=(self.connection,
                                                       self.symbol,
-                                                      self.partial_close,
-                                                      self.risk,self.profit,
-                                                      self.positions_entry,
-                                                      self.max_trades,
-                                                      "M1",
-                                                      self.stop_thread_flag,
-                                                      self.close_postions_flag,
-                                                      self.points,
-                                                      self.lots,
-                                                      True,
-                                                      self.dynamic_sl,
-                                                      False,
-                                                      self.fibonacci
-                                                      #self.models_combined
-                                                      ))                     
+                                                      self.strategy,
+                                                      self.strategy_parameters                                                  
+                                                      ),
+                                                kwargs={
+                                                    "gui": self,                                                    
+                                                    }
+                                                )                    
                         
         strategy_running_screen(self)       
                  
@@ -239,5 +228,5 @@ class App(customtkinter.CTk):
         chart.show(block=True)   
         
 if __name__ == "__main__":
-    app = App()    
+    app = ATLAS()    
     app.mainloop()

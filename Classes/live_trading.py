@@ -6,7 +6,7 @@ from Classes.randomForest import inputs_for_random_forest_v2,get_prediction
 from datetime import datetime,timedelta
 import operator
 
-def on_tick(mt5_connection,symbol,strategy,user_parameters):
+def on_tick(mt5_connection,symbol,strategy,user_parameters,**kwargs):
     """
     Execute the selected strategy with user arg every second to detect entries
 
@@ -19,18 +19,19 @@ def on_tick(mt5_connection,symbol,strategy,user_parameters):
             -max_trades (int): Max number of trades to open per session
             -dynamic_points (boolean): Determine SL / TP automatically.
             -points (int): Set SL / TP based on user parameters
+    kwargs:    
+        gui (app Tkinter): Object with the GUI created        
     """    
     
-    initial_balance = mt5_connection.account_details().balance
-    current_balance = initial_balance
+    initial_balance = mt5_connection.account_details().balance    
     time_open = None
-    position = False
     trades_results = {
         "win": 0,
         "loss": 0
     }
     trades_open = 0
     single = True if strategy == "single" else False
+    gui = kwargs.get("gui", None)           
     # Loop until a condition is met
     while True:
         dataFrame = mt5_connection.get_data(symbol,user_parameters["timeFrame"],101)[:-1]     
@@ -46,16 +47,25 @@ def on_tick(mt5_connection,symbol,strategy,user_parameters):
         elif strategy == "multiple":            
             if user_parameters["dynamic_points"]:   
                 if trades_open <= user_parameters["max_trades"]:         
-                    time_open,trade = ema_crossing_dynamic_points(mt5_connection,initial_balance,dataFrame,symbol,single,user_parameters,time=time_open)
+                    time_open,trade = ema_crossing_dynamic_points(mt5_connection,initial_balance,dataFrame,symbol,single,user_parameters,time=time_open,depth=user_parameters["depth"],reverse=user_parameters["reverse"],min_points=user_parameters["min_points"])
                     if trade:
                         trades_open += 1                
             else:             
                 time_open = ema_crossing_static_points(mt5_connection,initial_balance,dataFrame,symbol,single,user_parameters,time=time_open)                        
-            
-        if check_limits_per_session(mt5_connection,initial_balance,user_parameters["profit"],user_parameters["loss"],trades_results,user_parameters["max_trades"]):
+        # If one condition is met close the loop and trades
+        if check_limits_per_session(mt5_connection,initial_balance,user_parameters["profit"],user_parameters["loss"],trades_results,user_parameters["max_trades"]) or gui.stop_thread_flag.is_set():
             print("Close")
             break
-        sleep(60)
+        # If close trades is trigered from GUI, close the trades but keep the thread alive (until other condition is met)
+        if gui.close_postions_flag.is_set():
+            close_trades()
+            gui.close_postions_flag.is_set.clear()        
+        sleep(1)
+        
+    # Close trades if the loop is ended 
+    if not mt5_connection.get_positions(0).empty:
+        close_trades(mt5_connection)
+                
 
 def ema_crossing_dynamic_points(mt5_connection,initial_balance,df,symbol,single,strategy_options,**kwargs):
     """
@@ -74,6 +84,9 @@ def ema_crossing_dynamic_points(mt5_connection,initial_balance,df,symbol,single,
     
     kwargs:
         -time (datetime): Time when trades can be opened again
+        -depth (int): Number of tardes to use to calculate the Highest and Lowest
+        -reverse (bool): Reverse the entries        
+        -min_points (int): Min points to open trades of SL
     
     Returns:
         position (boolean), last_balance (float), trades_result (dict), time (datetime) : 
@@ -81,22 +94,50 @@ def ema_crossing_dynamic_points(mt5_connection,initial_balance,df,symbol,single,
             -Result of the trade in key-value pairs.
             -Time when trades can be opened when kwargs are passed
     """
+    
+    def get_trade_values(signal):
+        """
+        Internal Function to get the SL, TP and entry price for the signal detected
+
+        Args:
+            signal (int): BUY (1), SELL (0)
+
+        Returns:
+            float: Return SL, TP and Entry price values
+        """
+        if signal == 1:
+            print("****************** BUY ******************")
+            decimal_places = len(str(mt5.symbol_info_tick(symbol).ask).split(".")[1])
+            entry_price = mt5.symbol_info_tick(symbol).ask
+            sl = round(entry_price - fibonacci_levels[23.6], decimal_places)
+            tp = round(entry_price + fibonacci_levels[61.8], decimal_places)
+        else:
+            print("****************** SELL ******************")   
+            decimal_places = len(str(mt5.symbol_info_tick(symbol).bid).split(".")[1])
+            entry_price = mt5.symbol_info_tick(symbol).bid
+            sl = round(entry_price + fibonacci_levels[23.6], decimal_places)
+            tp = round(entry_price - fibonacci_levels[61.8], decimal_places)
+        return sl,tp, entry_price
+    
     values_for_strategy = PARAMETERS(symbol)  
     tickets = []       
     trades_result = {"win":0,"loss":0}
     last_balance = initial_balance    
-    time_to_open = kwargs.get("time", None)        
+    time_to_open = kwargs.get("time", None)   
+    min_points = kwargs.get("min_points", 150)   
+    depth = kwargs.get("depth", 30)         
+    reverse_entries = kwargs.get("reverse", True)       
     position = False  
     valid_entries = False
     # If there's no open trades, look for entries
     if mt5_connection.get_positions(0).empty or not single:                                    
-        position, entry = EMA_CROSSING(df=df,offset=values_for_strategy["OFFSET"], ema_open=values_for_strategy["EMA_OPEN"],ema_period= values_for_strategy["EMA_LH"],reverse=True)                         
+        position, entry = EMA_CROSSING(df=df,offset=values_for_strategy["OFFSET"], ema_open=values_for_strategy["EMA_OPEN"],ema_period= values_for_strategy["EMA_LH"],reverse=reverse_entries)                         
         # Check if multiple entries can be opened        
         if not single and time_to_open is not None:
             if datetime.now() <= time_to_open:
                 position = False
         if position:                     
-                lowest,highest = Technical(df).get_lowest_and_highest(30) 
+                lowest,highest = Technical(df).get_lowest_and_highest(depth) 
                 difference = abs(highest - lowest)
                 fibonacci_levels = {
                     11.2: .112* difference,
@@ -105,30 +146,19 @@ def ema_crossing_dynamic_points(mt5_connection,initial_balance,df,symbol,single,
                     50: .5 * difference,
                     61.8: .618 * difference
                 }                            
-                if entry == 1:
-                    print("****************** BUY ******************")
-                    decimal_places = len(str(mt5.symbol_info_tick(symbol).ask).split(".")[1])
-                    entry_price = mt5.symbol_info_tick(symbol).ask
-                    sl = round(entry_price - fibonacci_levels[23.6], decimal_places)
-                    tp = round(entry_price + fibonacci_levels[61.8], decimal_places)
-                else:
-                    print("****************** SELL ******************")   
-                    decimal_places = len(str(mt5.symbol_info_tick(symbol).bid).split(".")[1])
-                    entry_price = mt5.symbol_info_tick(symbol).bid
-                    sl = round(entry_price + fibonacci_levels[23.6], decimal_places)
-                    tp = round(entry_price - fibonacci_levels[61.8], decimal_places)   
+                sl, tp, entry_price = get_trade_values(entry)  
                 points_to_tp = int((max([tp,entry_price]) - min([tp,entry_price])) * (100 if symbol == "XAUUSD" else 100_000))                                                                                             
                 points_to_sl = int((max([sl,entry_price]) - min([sl,entry_price])) * (100 if symbol == "XAUUSD" else 100_000))                                                                                             
-                if not (80 <= points_to_sl <= 500) and symbol == "XAUUSD":                    
+                if not (min_points <= points_to_sl <= 500) and symbol == "XAUUSD":                    
                     print("Position will be skipped due sl is too short: ",points_to_sl)                                                                                                  
-                else:                    
+                else:                                                            
                     # Open trades with SL/TP based on Fibonacci levels
-                    while len(tickets) < strategy_options["entries_per_trade"]:                                            
+                    while len(tickets) < strategy_options["entries_per_trade"]: 
                         ticket = mt5_connection.open_position(symbol, entry, strategy_options["lots"],[sl,tp])                        
                         if ticket != 0:
-                            tickets.append(ticket) 
-                    valid_entries = False
+                            tickets.append(ticket)                     
                     # Check for valid entries
+                    valid_entries = False
                     for ticket in tickets:
                         if ticket != 10019:
                             valid_entries = True            

@@ -32,6 +32,7 @@ class ATLAS(customtkinter.CTk):
         side_bar(self)        
         set_up_main_frame(self)           
         help_screen(self)
+        
         self.sidebar_button_2.configure(state="disabled")    
         self.authentication = False   
         self.stop_thread_flag = threading.Event()
@@ -81,7 +82,7 @@ class ATLAS(customtkinter.CTk):
             # Return button
             self.sidebar_button_2.configure(state="enabled")
             self.main_frame.stop_thread = customtkinter.CTkButton(self.main_frame, text="Return Strategy Screen",command= self.start_connection)
-            self.main_frame.stop_thread.grid(row=7, column=0,columnspan=2, padx=40, pady=0,sticky="ew")            
+            self.main_frame.stop_thread.grid(row=4, column=0,columnspan=2, padx=40, pady=0,sticky="ew")            
         except:
             pass
     # Close trades manually
@@ -194,38 +195,7 @@ class ATLAS(customtkinter.CTk):
                                                 )                    
                         
         strategy_running_screen(self)       
-                 
-    def start_backtest(self):        
-        self.symbol = self.main_frame.symbols_options.get()        
-        # Default value
-        self.reverse = True       
-        self.points = round(int(self.main_frame.points_entry.get()),2)             
-        self.fibonacci = self.main_frame.fibonacci_options.get() == "Enable"
-        self.periods = self.main_frame.periods_entry.get()        
-        
-        # Start backtest to get the trades
-        trades, win_rate = execute_backtest(connection=self.connection,
-                                            symbol=self.symbol,
-                                            n_periods=int(self.periods),
-                                            points=self.points,
-                                            automatic_points=self.fibonacci,
-                                            use_random_forest=True,
-                                            volume_filter=False,
-                                            reverse_entries=False
-                                            )    
-        # Initialize window    
-        chart = Chart(inner_width=.8,maximize=True,on_top=True,title="ATLAS - Backtesting")        
-        chart.layout(background_color='#090008', text_color='#FFFFFF', font_size=16,
-                    font_family='Helvetica')    
-        chart.watermark('XAUUSD', color='rgba(180, 180, 240, 0.5)')
-
-        chart.crosshair(mode='normal', vert_color='#FFFFFF', vert_style='dotted',
-                        horz_color='#FFFFFF', horz_style='dotted')
-        chart.legend(visible=True, font_size=14)           
-                                    
-        table,table_result = generate_tables_of_trades()       
-        
-        chart.show(block=True)   
+                    
         
 if __name__ == "__main__":
     app = ATLAS()    

@@ -52,3 +52,11 @@ Live trading multiple trades semi working for dynamic points, update the static 
 - Fix the multiple threads, when the first interval of time is reached the new interval is not working, causing open multiple entries and reaching the max.
 - Optimize rest of the modules.
 - Work in generate a Q1 performance.
+
+## 14/12/2024
+
+GUI updated according new live_trading functions
+
+# Pending Functions
+
+Automatic optimization: Execute this function automatically every certain interval. Function will execute a backtest and adjust parameters based on these.

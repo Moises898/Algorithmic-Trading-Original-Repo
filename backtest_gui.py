@@ -92,29 +92,7 @@ def on_row_click(row):
     table.footer[1] = id_mapping[row["ID"]]
 
 
-def execute_backtest(connection, symbol, n_periods, points=100,depth=11, automatic_points=False, use_random_forest=False,
-                    reverse_entries=False,**kwargs):
-    dataFrame = kwargs.get("dataFrame",None)        
-    # Execute with custom parameters
-    operations, _ = backtest_strategy(connection, n_periods, symbol, reverse_entries, points,depth=depth,
-                                      fibonacci=automatic_points, model=use_random_forest,dataFrame=dataFrame)
-    counters, results = analyze_results(operations)
-    try:
-        win_rate = counters['tp_counter'] / sum(counters.values())
-        drop_open_trades = []
-        # Ask the user if want to display the open trades
-        for trade in operations.keys():
-            if trade in results.keys():
-                operations[trade]["result"] = results[trade]["result"]
-            else:
-                drop_open_trades.append(trade)
-                # operations[trade]["result"] = "OPEN"
-        # Drop the keys
-        for open_trade in drop_open_trades:
-            del operations[open_trade]
-        return operations, win_rate
-    except ZeroDivisionError:
-        return None, None
+
 
 
 def generate_tables_of_trades(chart, results):
@@ -183,7 +161,8 @@ if __name__ == '__main__':
                                         automatic_points=True,  # best_settings['fibonnaci_used'],
                                         use_random_forest=False,  # best_settings['randomForest'],
                                         volume_filter=False,
-                                        reverse_entries=True
+                                        reverse_entries=True,
+                                        depth=30
                                         )
     if trades is None:
         print("No entries")

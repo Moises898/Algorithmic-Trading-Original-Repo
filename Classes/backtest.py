@@ -4,6 +4,8 @@ from Classes.randomForest import inputs_for_random_forest, get_prediction
 import pandas as pd
 from datetime import date
 import MetaTrader5 as mt5
+import numpy as np
+import math
 
 DEFAULT_RANGE = lambda x:  range(100, 1200, 100) if x == "XAUUSD" else range(40, 100, 5)
 
@@ -94,7 +96,7 @@ def backtest_strategy(conn,n_periods,symbol,reverse,points,interval_entries=10,d
                 df_for_strategy["SL"] = sl
                 df_for_strategy["TP"] = tp            
                 df_to_plot = df_testing.iloc[start:] 
-                if fibonacci and (not (80 <= sl_value <= 500) and symbol == "XAUUSD") or (points_value < 40 and symbol == "EURUSD"):
+                if fibonacci and (not (100 <= sl_value <= 500) and symbol == "XAUUSD") or (points_value < 40 and symbol == "EURUSD"):
                         pass
                         #print("Position will be skipped")                   
                 else:
@@ -189,55 +191,69 @@ def backtest_and_analyze(conn, n_periods, symbol, reverse, points, volume_filter
         final_points = points_fibonacci
     return win_rate, final_points
 
-# Execute the method below to get the best parameters
-def optimize_strategy(conn, n_periods, symbol):
-    """
-    Optimize the strategy by testing different points for SL and TP or by automatic Points using Fibonacci levels
-
+def strategy_optimization(conn,symbol,periods=500):
+    """    
+    This function execute a backtest to optimize the parameters based on a score
+    
     Args:
-        conn: Database connection or data source.
-        n_periods: Number of periods for backtesting.
-        symbol: The trading symbol.
+        conn (MT5): MT5 connection object
+        symbol (string): Symbol to use for the backtesting
+        periods (int): Number of periods to perfom the backtest
 
     Returns:
-        A dictionary with the best SL and TP points, the best result, and whether reversing the entries and/or using
-        the volume filter is better.
+        list [depth,reverse]: Returns a list with best pair of values 
     """
+    depths = [30,100]
+    reverse_entries = [True]
+    best_values = []
+    best_score = -float('inf') 
+    for depth in depths:
+        for reverse in reverse_entries:            
+            trades, _ = execute_backtest(connection=conn,
+                                            symbol=symbol,
+                                            n_periods=periods,
+                                            points=400,  # best_settings['best_points'],
+                                            automatic_points=True,  # best_settings['fibonnaci_used'],
+                                            use_random_forest=False,  # best_settings['randomForest'],                                    
+                                            reverse_entries=reverse,
+                                            depth=depth
+                                            )
+            if trades:                                
+                backtest_results = get_orders_from_backtesting(trades, symbol, lots=0.01)   
+                profit = backtest_results["Profit"].sum() - backtest_results["Commission"].sum()
+                num_trades = backtest_results.shape[0]                 
+                if profit > 0:
+                    score = profit * math.log(num_trades+1)
+                else:
+                    score = profit / (num_trades + 1)                
+                if best_score < score:
+                    best_score = score
+                    best_values = [depth,reverse]   
+    return best_values      
 
-    best_result = None
-    best_points = None    
-    points_range = DEFAULT_RANGE(symbol)
-    results = []   
-    fibonnaci_is_best = False
-    random_is_best = False
-    for points in points_range:  
-        # Original Strategy    
-        win_rate,_ = backtest_and_analyze(conn, n_periods, symbol, reverse=False, points=points, volume_filter=False,fibonnaci=False, random_forest=False)
-        results.append((win_rate, points,False,False))
-        # Strategy with random forest
-        win_rate,_ = backtest_and_analyze(conn, n_periods, symbol, reverse=False, points=points, volume_filter=False,fibonnaci=False, random_forest=True)
-        results.append((win_rate, points,False,True))                                          
-                
-    # Add results using fibonacci levels
-    win_rate, fibonnaci = backtest_and_analyze(conn, n_periods, symbol, reverse=False, points=points, volume_filter=False,fibonnaci=True, random_forest=False)
-    results.append((win_rate,fibonnaci,True,False))
-    # Add results using fibonacci levels and random forest
-    win_rate, fibonnaci2 = backtest_and_analyze(conn, n_periods, symbol, reverse=False, points=points, volume_filter=False,fibonnaci=True, random_forest=True)
-    results.append((win_rate,fibonnaci2,True,True))
-    
-    # Check best results
-    for win_rate,points,fibonnaci_implemented,randomForest in results:
-        if best_result is None or win_rate > best_result:
-            best_result = win_rate
-            best_points = points
-            fibonnaci_is_best = fibonnaci_implemented
-            random_is_best = randomForest
-    return {
-        "best_points": best_points,
-        "best_result": best_result,
-        "fibonnaci_used": fibonnaci_is_best,
-        "randomForest": random_is_best
-    }    
+def execute_backtest(connection, symbol, n_periods, points=100,depth=11, automatic_points=False, use_random_forest=False,
+                    reverse_entries=False,**kwargs):
+    dataFrame = kwargs.get("dataFrame",None)        
+    # Execute with custom parameters
+    operations, _ = backtest_strategy(connection, n_periods, symbol, reverse_entries, points,depth=depth,
+                                      fibonacci=automatic_points, model=use_random_forest,dataFrame=dataFrame)
+    counters, results = analyze_results(operations)
+    try:
+        win_rate = counters['tp_counter'] / sum(counters.values())
+        drop_open_trades = []
+        # Ask the user if want to display the open trades
+        for trade in operations.keys():
+            if trade in results.keys():
+                operations[trade]["result"] = results[trade]["result"]
+            else:
+                drop_open_trades.append(trade)
+                # operations[trade]["result"] = "OPEN"
+        # Drop the keys
+        for open_trade in drop_open_trades:
+            del operations[open_trade]
+        return operations, win_rate
+    except ZeroDivisionError:
+        return None, None
 
 def get_orders_from_backtesting(operations,symbol,lots=0.01):
     counters,trades = analyze_results(operations)

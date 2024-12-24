@@ -51,7 +51,7 @@ def EMA_CROSSING(df,offset=3, ema_open=15, ema_period=3,reverse=False,show=False
         EMA_HIGH = M1_technical.EMA(entry="high", period=ema_period, deviation=offset)
         EMA_OPEN = M1_technical.EMA(entry="open", period=ema_open, deviation=-1)
         supertrend = M1_technical.calculate_super_trend(PARAMETERS("XAUUSD")["ATR_LENGHT"], PARAMETERS("XAUUSD")["FACTOR"])          
-        if (CROSSING(EMA_OPEN, EMA_HIGH, 0)) and supertrend == 1:            
+        if (CROSSING(EMA_OPEN, EMA_HIGH, 0)) and supertrend == 0:            
             # SELL Under
             if counters[-1] / total >= .35:
                 if show:
@@ -64,7 +64,7 @@ def EMA_CROSSING(df,offset=3, ema_open=15, ema_period=3,reverse=False,show=False
                 operation = True
                 trend_for_operation = 1                 
         
-        elif (CROSSING(EMA_OPEN, EMA_LOW, 1)) and supertrend == 0:
+        elif (CROSSING(EMA_OPEN, EMA_LOW, 1)) and supertrend == 1:
             # BUY Over
             if counters[1] / total >= .35:
                 if show:

@@ -2,9 +2,11 @@ from time import sleep
 import MetaTrader5 as mt5
 from Classes.technical import Technical
 from Classes.Strategies import EMA_CROSSING,PARAMETERS
+from Classes.backtest import strategy_optimization
 from Classes.randomForest import inputs_for_random_forest_v2,get_prediction
 from datetime import datetime,timedelta
 import operator
+import time
 
 def on_tick(mt5_connection,symbol,strategy,user_parameters,**kwargs):
     """
@@ -31,7 +33,15 @@ def on_tick(mt5_connection,symbol,strategy,user_parameters,**kwargs):
     }
     trades_open = 0
     single = True if strategy == "single" else False
-    gui = kwargs.get("gui", None)           
+    gui = kwargs.get("gui", None)    
+    # Execute Optimization Function to get best values
+    best_values = strategy_optimization(mt5_connection,symbol,200)
+    if not best_values:
+        best_values = [30,True]
+    else:
+        print(best_values)
+    timer_start = time.time()
+    interval_minutes = 20
     # Loop until a condition is met
     while True:
         dataFrame = mt5_connection.get_data(symbol,user_parameters["timeFrame"],101)[:-1]     
@@ -46,19 +56,28 @@ def on_tick(mt5_connection,symbol,strategy,user_parameters,**kwargs):
         # Open multiple trades with intervals
         elif strategy == "multiple":            
             if user_parameters["dynamic_points"]:   
-                if trades_open <= user_parameters["max_trades"]:         
-                    time_open,trade = ema_crossing_dynamic_points(mt5_connection,initial_balance,dataFrame,symbol,single,user_parameters,time=time_open,depth=user_parameters["depth"],reverse=user_parameters["reverse"],min_points=user_parameters["min_points"])
+                if trades_open <= user_parameters["max_trades"]:   
+                    elapsed_time = time.time() - timer_start
+                    # Execute optimization function every 20 min
+                    if elapsed_time >= interval_minutes * 60:
+                        new_values = strategy_optimization(mt5_connection,symbol,120)
+                        timer_start = time.time()
+                        print(new_values)
+                        # Error Handling 
+                        if len(new_values) > 1:
+                            best_values = new_values
+                    time_open,trade = ema_crossing_dynamic_points(mt5_connection,initial_balance,dataFrame,symbol,single,user_parameters,time=time_open,depth=best_values[0],reverse=best_values[1],min_points=user_parameters["min_points"])
                     if trade:
                         trades_open += 1                
             else:             
                 time_open = ema_crossing_static_points(mt5_connection,initial_balance,dataFrame,symbol,single,user_parameters,time=time_open)                        
         # If one condition is met close the loop and trades
-        if check_limits_per_session(mt5_connection,initial_balance,user_parameters["profit"],user_parameters["loss"],trades_results,user_parameters["max_trades"]) or gui.stop_thread_flag.is_set():
+        if check_limits_per_session(mt5_connection,initial_balance,user_parameters["profit"],user_parameters["loss"],trades_results,user_parameters["max_trades"]) or (gui and gui.stop_thread_flag.is_set()):
             print("Close")
             break
         # If close trades is trigered from GUI, close the trades but keep the thread alive (until other condition is met)
-        if gui.close_postions_flag.is_set():
-            close_trades()
+        if gui and gui.close_postions_flag.is_set():
+            close_trades(mt5_connection)
             gui.close_postions_flag.is_set.clear()        
         sleep(1)
         
@@ -95,7 +114,7 @@ def ema_crossing_dynamic_points(mt5_connection,initial_balance,df,symbol,single,
             -Time when trades can be opened when kwargs are passed
     """
     
-    def get_trade_values(signal):
+    def get_trade_values(signal,fibo_level):
         """
         Internal Function to get the SL, TP and entry price for the signal detected
 
@@ -110,13 +129,13 @@ def ema_crossing_dynamic_points(mt5_connection,initial_balance,df,symbol,single,
             decimal_places = len(str(mt5.symbol_info_tick(symbol).ask).split(".")[1])
             entry_price = mt5.symbol_info_tick(symbol).ask
             sl = round(entry_price - fibonacci_levels[23.6], decimal_places)
-            tp = round(entry_price + fibonacci_levels[61.8], decimal_places)
+            tp = round(entry_price + fibonacci_levels[fibo_level], decimal_places)
         else:
             print("****************** SELL ******************")   
             decimal_places = len(str(mt5.symbol_info_tick(symbol).bid).split(".")[1])
             entry_price = mt5.symbol_info_tick(symbol).bid
             sl = round(entry_price + fibonacci_levels[23.6], decimal_places)
-            tp = round(entry_price - fibonacci_levels[61.8], decimal_places)
+            tp = round(entry_price - fibonacci_levels[fibo_level], decimal_places)
         return sl,tp, entry_price
     
     values_for_strategy = PARAMETERS(symbol)  
@@ -146,11 +165,12 @@ def ema_crossing_dynamic_points(mt5_connection,initial_balance,df,symbol,single,
                     50: .5 * difference,
                     61.8: .618 * difference
                 }                            
-                sl, tp, entry_price = get_trade_values(entry)  
+                sl, tp, entry_price = get_trade_values(entry,61.8)  
                 points_to_tp = int((max([tp,entry_price]) - min([tp,entry_price])) * (100 if symbol == "XAUUSD" else 100_000))                                                                                             
                 points_to_sl = int((max([sl,entry_price]) - min([sl,entry_price])) * (100 if symbol == "XAUUSD" else 100_000))                                                                                             
                 if not (min_points <= points_to_sl <= 500) and symbol == "XAUUSD":                    
-                    print("Position will be skipped due sl is too short: ",points_to_sl)                                                                                                  
+                    #print("Position will be skipped due sl is too short: ",points_to_sl)                                                                                                  
+                    pass
                 else:                                                            
                     # Open trades with SL/TP based on Fibonacci levels
                     while len(tickets) < strategy_options["entries_per_trade"]: 

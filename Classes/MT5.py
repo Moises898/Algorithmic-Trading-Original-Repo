@@ -64,9 +64,7 @@ class MT5:
             sys.exit()
         print("Successfully Connection! \n")
         self.connection_state = True
-
-        # Get object with all details
-
+        
     def account_details(self, show=0):
         """
         Returns an object if type AccountInfo from Metatarder5 library.
@@ -256,7 +254,7 @@ class MT5:
         return np.int64(result.order)
 
     # Send request to close position
-    def close_position(self, symbol, ticket, type_order, vol, comment="Close", display=False):
+    def close_position(self, ticket, comment="Close", display=False):
         """
             Close Open trade from MT5 Server
 
@@ -267,6 +265,15 @@ class MT5:
             @param comment: Comment to add to the order
             @param display: Display in console
         """
+        position = self.get_positions()
+        position = position[position["ticket"] == ticket]
+        # If ticket is not valid return
+        if position.empty:
+            print(f"Position with ticket {ticket} doesn't exist")
+            return         
+        else:
+            symbol, type_order,vol = position[["symbol","volume","type"]].iloc[0]
+        
         if type_order == 1:
             request_close = {
                 "action": mt5.TRADE_ACTION_DEAL,
@@ -291,7 +298,7 @@ class MT5:
                 "price": mt5.symbol_info_tick(symbol).ask,
                 "deviation": 20,
                 # "magic": 0,
-                "comment": "python script close",
+                "comment": comment,
                 "type_time": mt5.ORDER_TIME_GTC,
                 "type_filling": mt5.ORDER_FILLING_IOC,  # mt5.ORDER_FILLING_RETURN,
             }

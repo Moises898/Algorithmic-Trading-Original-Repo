@@ -35,11 +35,11 @@ def on_tick(mt5_connection,symbol,strategy,user_parameters,**kwargs):
     single = True if strategy == "single" else False
     gui = kwargs.get("gui", None)    
     # Execute Optimization Function to get best values
-    best_values = strategy_optimization(mt5_connection,symbol,200)
-    if not best_values:
-        best_values = [30,True]
-    else:
-        print(best_values)
+    best_values = best_values = [100,True]#strategy_optimization(mt5_connection,symbol,200)
+    # if not best_values:
+    #     best_values = [100,True]
+    # else:
+    #     print(best_values)
     timer_start = time.time()
     interval_minutes = 20
     # Loop until a condition is met
@@ -57,15 +57,15 @@ def on_tick(mt5_connection,symbol,strategy,user_parameters,**kwargs):
         elif strategy == "multiple":            
             if user_parameters["dynamic_points"]:   
                 if trades_open <= user_parameters["max_trades"]:   
-                    elapsed_time = time.time() - timer_start
-                    # Execute optimization function every 20 min
-                    if elapsed_time >= interval_minutes * 60:
-                        new_values = strategy_optimization(mt5_connection,symbol,120)
-                        timer_start = time.time()
-                        print(new_values)
-                        # Error Handling 
-                        if len(new_values) > 1:
-                            best_values = new_values
+                    # elapsed_time = time.time() - timer_start
+                    # # Execute optimization function every 20 min
+                    # if elapsed_time >= interval_minutes * 60:
+                    #     new_values = strategy_optimization(mt5_connection,symbol,120)
+                    #     timer_start = time.time()
+                    #     print(new_values)
+                    #     # Error Handling 
+                    #     if len(new_values) > 1:
+                    #         best_values = new_values
                     time_open,trade = ema_crossing_dynamic_points(mt5_connection,initial_balance,dataFrame,symbol,single,user_parameters,time=time_open,depth=best_values[0],reverse=best_values[1],min_points=user_parameters["min_points"])
                     if trade:
                         trades_open += 1                
@@ -163,9 +163,10 @@ def ema_crossing_dynamic_points(mt5_connection,initial_balance,df,symbol,single,
                     23.6: .236 * difference,
                     38.2: .382 * difference,        
                     50: .5 * difference,
+                    56: .56 * difference,
                     61.8: .618 * difference
                 }                            
-                sl, tp, entry_price = get_trade_values(entry,61.8)  
+                sl, tp, entry_price = get_trade_values(entry,56)  
                 points_to_tp = int((max([tp,entry_price]) - min([tp,entry_price])) * (100 if symbol == "XAUUSD" else 100_000))                                                                                             
                 points_to_sl = int((max([sl,entry_price]) - min([sl,entry_price])) * (100 if symbol == "XAUUSD" else 100_000))                                                                                             
                 if not (min_points <= points_to_sl <= 500) and symbol == "XAUUSD":                    
@@ -356,7 +357,7 @@ def close_trades(mt5_connection):
                 ticket = trades_dict[i]["ticket"]
                 order_type = 0 if trades_dict[i]["type"] == 1 else 1                        
                 volume = trades_dict[i]["volume"]
-            mt5_connection.close_position(symbol, ticket, order_type, volume,"Closing Session")            
+            mt5_connection.close_position(ticket,"Closing Session")            
             # Check all trades are closed
             trades = mt5_connection.get_positions(0)[["symbol", "ticket", "type", "volume"]]               
             if trades.empty:
@@ -458,7 +459,7 @@ def apply_trailling_stop(mt5_connection,symbol,trailling_type="normal",partial_c
             # Close one trade 
             if partial_close and len(trades_dict) > 1:
                 ticket_to_close,order_to_close,volume = trades_dict[0]["ticket"], trades_dict[0]["type"],trades_dict[0]["volume"]    
-                mt5_connection.close_position(symbol, ticket_to_close, order_to_close, volume,"Partial Close")
+                mt5_connection.close_position(ticket_to_close,"Partial Close")
             send_request = False         
         # Update main variables to control the loop
         try: 

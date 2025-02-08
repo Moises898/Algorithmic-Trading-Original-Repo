@@ -20,7 +20,7 @@
   - [get\_positions(show,symbol,id)](#get_positionsshowsymbolid)
     - [Parameters](#parameters-3)
     - [Example:](#example-6)
-  - [close\_position(symbol,ticket,type\_order)](#close_positionsymboltickettype_order)
+  - [close\_position(ticket,type\_order)](#close_positiontickettype_order)
     - [Parameters](#parameters-4)
     - [Examples:](#examples)
   - [get\_data(symbol, temp, n\_periods, plot=0)](#get_datasymbol-temp-n_periods-plot0)
@@ -213,15 +213,12 @@ This method by default filter spread less than 10 and return a list with the sym
     df = conn.get_positions()   
 </p>
 
-## close_position(symbol,ticket,type_order)
+## close_position(ticket,type_order)
 
 ### Parameters
 
-<ol>
-    <li>symbol:Name of the symbol to close the trade --> str</li>
-    <li>ticket: ID of the trade --> str </li>
-    <li>type_order: BUY (1) or SELL (0) --> int </li>
-    <li>vol: Size of the trade --> float </li>
+<ol>    
+    <li>ticket: ID of the trade --> str </li>   
     <li>comment: Comment to sent (Close by default) --> str</li>
 </ol>
 

@@ -257,11 +257,8 @@ class MT5:
     def close_position(self, ticket, comment="Close", display=False):
         """
             Close Open trade from MT5 Server
-
-            @param symbol: Name of the Symbol
-            @param ticket: ID of the trade
-            @param type_order: BUY (1) or SELL (0)
-            @param vol: Size of the trade
+         
+            @param ticket: ID of the trade        
             @param comment: Comment to add to the order
             @param display: Display in console
         """

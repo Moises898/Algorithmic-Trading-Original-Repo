@@ -61,7 +61,7 @@ def TRAILLING_STOP(s,order,tickets,conn, points,profit,risk,pnl,apply_both_direc
                 if len(tickets) > 1 and (price_open < current_price if order == 1 else price_open > current_price) and partial_close:                    
                     for ticket_to_close in tickets:
                         if ticket_to_close != 10019:          
-                            conn.close_position(s, ticket_to_close, order, volume, comment="Partial Close")                                    
+                            conn.close_position(ticket_to_close, comment="Partial Close")                                    
                             tickets.remove(ticket_to_close)
                             break
                     print("Partial Close")
@@ -155,21 +155,21 @@ def TRAILLING_STOP_FIBONACCI(s,order,tickets,conn,levels,profit,risk,pnl,flag_to
                     if len(tickets) > 1:
                         ticket_to_close = tickets.pop()                                    
                         if ticket_to_close != 10019:          
-                            conn.close_position(s, ticket_to_close, order, volume, comment="Partial Close")                                                                                    
+                            conn.close_position(ticket_to_close, comment="Partial Close")                                                                                    
                         print("Partial Close") 
                 elif tp2_triggered and not tp2_partial:
                     tp2_partial = True
                     if len(tickets) > 1:
                         ticket_to_close = tickets.pop()                                    
                         if ticket_to_close != 10019:          
-                            conn.close_position(s, ticket_to_close, order, volume, comment="Partial Close")                                                                                    
+                            conn.close_position(ticket_to_close, comment="Partial Close")                                                                                    
                         print("Partial Close") 
                 elif sl1_triggered and not sl1_partial:
                     sl1_partial = True
                     if len(tickets) > 1:
                         ticket_to_close = tickets.pop()                                    
                         if ticket_to_close != 10019:          
-                            conn.close_position(s, ticket_to_close, order, volume, comment="Partial Close")                                                                                    
+                            conn.close_position(ticket_to_close, comment="Partial Close")                                                                                    
                         print("Partial Close") 
             # Update the TP/SL if dynamic Sl was enabled
             if dynamic_sl:                            

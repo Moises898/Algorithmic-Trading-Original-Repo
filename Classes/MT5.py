@@ -269,9 +269,9 @@ class MT5:
             print(f"Position with ticket {ticket} doesn't exist")
             return         
         else:
-            symbol, type_order,vol = position[["symbol","volume","type"]].iloc[0]
+            symbol, type_order,vol = position[["symbol","type","volume"]].iloc[0]
         
-        if type_order == 1:
+        if type_order == 0:
             request_close = {
                 "action": mt5.TRADE_ACTION_DEAL,
                 "symbol": symbol,

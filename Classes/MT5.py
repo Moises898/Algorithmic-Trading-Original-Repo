@@ -32,15 +32,19 @@ class MT5:
         "W1": mt5.TIMEFRAME_W1,
         "MN1": mt5.TIMEFRAME_MN1
     }
-    utc_from = None
-    utc_to = None
-    date = None
-    timezone = pytz.timezone("Etc/UTC")
+    
     # Tuple with all the symbols
     group_symbols = mt5.symbols_get()
 
     # Constructor method every time we want to create a new object
     def __init__(self, user, password, server):
+        """Constructor Method
+
+        Args:
+            user (string): Account Id of MT5 account
+            password (string): Password of MT5 account
+            server (string): Server of MT5 account
+        """        
         self.error = None
         self.rates = None
         self.bars = None
@@ -67,10 +71,10 @@ class MT5:
         
     def account_details(self, show=0):
         """
-        Returns an object if type AccountInfo from Metatarder5 library.
+        Returns an object of type AccountInfo from Metatarder5 library.
 
         Args:
-            show (int, optional): Display object to the console. Defaults to 0.
+            show (int, optional): Print the object to the console. By default it won't display the object.
 
         Returns:
             AccountInfo: Object with account information, acces values through attributes.
@@ -81,7 +85,8 @@ class MT5:
         try:
             account_info = mt5.account_info()
         except:
-            print("failed to connect at account #{}, error code: {}".format(self.user, mt5.last_error()))
+            print("Failed to connect at account #{}, error code: {}".format(self.user, mt5.last_error()))
+            print("Please visit https://www.mql5.com/en/docs/constants/errorswarnings/enum_trade_return_codes to get more info about the error")
 
         if show != 0:
             print(account_info)
@@ -90,26 +95,26 @@ class MT5:
         return account_info
 
     # Display all available symbols with the spread passed
-    def display_symbols(self, elements, spread=10):
+    def display_symbols(self, keyword, spread=30):
         """ 
-            Display the symbols with a spread less than te input user, this function also return a list with the rest
-            of attributes from the symbols.
+            Filter the symbols that matches with the criterias. The function will return a DataFrame with most relevant data of the symbols.            
 
-            @param spread: Max value of spread to display symbols
-            @param elements: Str to retrieve symbols e.g (EUR,USD,XAUUSD)
+            @param spread (int): Max value of spread to display symbols
+            @param keyword (list): String to retrieve symbols e.g [EUR,USD,XAUUSD]
             @return: pandas DataFrame --> Orders info
+                        
         """
 
-        lenght = len(elements)
+        lenght = len(keyword)
 
         # Define the first elem in the list
-        string = f'*{elements[0]}*'
+        string = f'*{keyword[0]}*'
         new_list = list()
 
-        # Create a list to concatenate the elements and get the format to pass as parameter
-        if not len(elements) == 1:
+        # Create a list to concatenate the keyword and get the format to pass as parameter
+        if not len(keyword) == 1:
             for i in range(1, lenght):
-                new_list.append(f'*{elements[i]}*')
+                new_list.append(f'*{keyword[i]}*')
 
         final_string = string
         for elem in new_list:
@@ -121,15 +126,19 @@ class MT5:
         for e in self.group_symbols:
             if not e.spread > spread:
                 group_return.append(e)
-
-        return group_return
+        if group_return:
+            df = pd.DataFrame(group_return)[[93,89,12]].rename(columns={89:"Description",93:"Name",12:"Spread"})
+        else:
+            df = pd.DataFrame()
+            print("There's no current symbols that satisfy your conditions, please try again later or use different values")
+        return df
 
     # Display orders opened
-    def get_deals(self, ticket=0, show=1):
+    def get_deals(self, ticket=0, show=0):
         """
             Display orders from the MT5 history server
 
-            @param ticket: Order ID from the trade
+            @param ticket: Order ID from the trade executed
             @param show: Display DataFrame in the console
             @return: pandas DataFrame --> Orders info
         """
@@ -147,22 +156,20 @@ class MT5:
                 print("Error in get deals!")
         return pd.DataFrame()
 
-    def get_positions(self, show=1, symbol=None, id=None):
+    def get_positions(self, show=0, symbol=None):
         """
-            Get the positions opened to extract the info and close it with the function below
+            Retrieve positions that are currently running according to the user input.
 
             @param show: Display message in console
-            @param symbol: Symbol name to check for open trades
-            @param id: ID to check for open trades
+            @param symbol: Symbol name to check for open trades            
             @return: pandas DataFrame
         """
         df = pd.DataFrame()
-        if symbol is not None and id is None:
-            info_position = mt5.positions_get(symbol=symbol)
-        elif id is not None and symbol is None:
-            info_position = mt5.positions_get(ticket=id)
+        if symbol:
+            info_position = mt5.positions_get(symbol=symbol)        
         else:
-            info_position = mt5.positions_get()
+            info_position = mt5.positions_get()            
+                
 
         if info_position is None or len(info_position) == 0:
             if show == 1:
@@ -256,14 +263,14 @@ class MT5:
     # Send request to close position
     def close_position(self, ticket, comment="Close", display=False):
         """
-            Close Open trade from MT5 Server
+            Close the trade from MT5 Server
          
             @param ticket: ID of the trade        
             @param comment: Comment to add to the order
             @param display: Display in console
         """
         position = self.get_positions()
-        position = position[position["ticket"] == ticket]
+        position = position[position["ticket"] == int(ticket)]
         # If ticket is not valid return
         if position.empty:
             print(f"Position with ticket {ticket} doesn't exist")
@@ -314,16 +321,13 @@ class MT5:
         @param plot: Display a chart in japanese format
         @return: pandas DataFrame --> candles information
         """
-
-        self.utc_to = dt.datetime.now(tz=self.timezone) + dt.timedelta(hours=8)
-        self.utc_from = self.utc_to - dt.timedelta(minutes=n_periods)
+       
         self.bars = n_periods
-        self.rates = mt5.copy_rates_from(symbol, self.time_frames[temp], self.utc_from, self.bars)
+        self.rates = mt5.copy_rates_from_pos(symbol, self.time_frames[temp], 0, self.bars)
         # Create a DataFrame from the obtained data
         rates_frame = pd.DataFrame(self.rates)
         # Convert time in seconds into the datetime format
-        rates_frame['time'] = pd.to_datetime(rates_frame['time'], unit='s')
-        rates_frame["time"] = rates_frame["time"] - pd.Timedelta(hours=9)
+        rates_frame['time'] = pd.to_datetime(rates_frame['time'], unit='s')     
         rates_frame = rates_frame.set_index('time')
         # Plot the graph
         if not plot == 0:

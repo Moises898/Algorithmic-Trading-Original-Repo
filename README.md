@@ -1,6 +1,6 @@
-# ATLAS Algorithmic Trading
 
-- [ATLAS Algorithmic Trading](#atlas-algorithmic-trading)
+- [Installation](#installation)
+- [Introduction](#introduction)
 - [MT5](#mt5)
   - [Constructor Method](#constructor-method)
     - [Parameters](#parameters)
@@ -11,16 +11,16 @@
     - [Example:](#example-2)
   - [account\_details(show=0)](#account_detailsshow0)
     - [Example:](#example-3)
-  - [display\_symbols(elements,spread=10)](#display_symbolselementsspread10)
+  - [display\_symbols(keyword,spread=30)](#display_symbolskeywordspread30)
     - [Parameters](#parameters-1)
     - [Example:](#example-4)
   - [open\_position(symbol,operation,lot,points=40,comment="Python")](#open_positionsymboloperationlotpoints40commentpython)
     - [Parameters](#parameters-2)
     - [Example:](#example-5)
-  - [get\_positions(show,symbol,id)](#get_positionsshowsymbolid)
+  - [get\_positions(symbol=None)](#get_positionssymbolnone)
     - [Parameters](#parameters-3)
     - [Example:](#example-6)
-  - [close\_position(ticket,type\_order)](#close_positiontickettype_order)
+  - [close\_position(ticket, comment="Close", display=False)](#close_positionticket-commentclose-displayfalse)
     - [Parameters](#parameters-4)
     - [Examples:](#examples)
   - [get\_data(symbol, temp, n\_periods, plot=0)](#get_datasymbol-temp-n_periods-plot0)
@@ -29,65 +29,28 @@
   - [calculate\_profit(symbol,points,lot,order)](#calculate_profitsymbolpointslotorder)
     - [Parameters](#parameters-6)
     - [Examples](#examples-1)
-- [Technical](#technical)
-  - [Constructor method](#constructor-method-1)
-    - [Example:](#example-8)
-  - [get\_bars\_direction(lenght)](#get_bars_directionlenght)
-    - [Parameters](#parameters-7)
-    - [Example:](#example-9)
-  - [EMA(entry = "close", period = 12, deviation=-1)](#emaentry--close-period--12-deviation-1)
-    - [Parameters](#parameters-8)
-    - [Example:](#example-10)
-  - [SMA(entry = "close", period = 12, deviation=-1)](#smaentry--close-period--12-deviation-1)
-    - [Parameters](#parameters-9)
-    - [Example:](#example-11)
-  - [calculate\_middle\_price(period=10)](#calculate_middle_priceperiod10)
-    - [Parameters](#parameters-10)
-    - [Example:](#example-12)
-  - [calculate\_roc(entry="open", period=8)](#calculate_rocentryopen-period8)
-    - [Parameters](#parameters-11)
-    - [Example:](#example-13)
-  - [calculate\_avg\_price()](#calculate_avg_price)
-    - [Example:](#example-14)
-  - [get\_previous\_bar\_trend()](#get_previous_bar_trend)
-    - [Example](#example-15)
-  - [get\_current\_bar\_trend()](#get_current_bar_trend)
-    - [Example](#example-16)
-  - [calculate\_trend\_by\_bars\_trend(n\_periods=0)](#calculate_trend_by_bars_trendn_periods0)
-    - [Parameters](#parameters-12)
-    - [Example](#example-17)
-  - [calculate\_trend\_by\_trendline(n\_periods=0)](#calculate_trend_by_trendlinen_periods0)
-    - [Parameters](#parameters-13)
-    - [Example](#example-18)
-  - [calculate\_chopiness\_index(lookback=6)](#calculate_chopiness_indexlookback6)
-    - [Parameters](#parameters-14)
-    - [Example](#example-19)
-  - [calculate\_trend\_angle(n\_periods=50)](#calculate_trend_anglen_periods50)
-    - [Parameters](#parameters-15)
-    - [Example:](#example-20)
-  - [get\_lowest\_and\_highest(lenght=10)](#get_lowest_and_highestlenght10)
-    - [Parameters](#parameters-16)
-    - [Example:](#example-21)
-  - [calculate\_super\_trend(atr\_period=15, multiplier=3)](#calculate_super_trendatr_period15-multiplier3)
-    - [Parameters](#parameters-17)
-    - [Example:](#example-22)
-- [Live Trading](#live-trading)
-  - [On Tick](#on-tick)
-    - [Parameters:](#parameters-18)
 
-<h2>Introduction</h2>
-<p>This module use the Metatatrader5 library to connect with the platform, the functions were adapted to launch operations with own parameters and conditions.To know more information about the functions of Metatrade5, please refer the next documentation:<br> 
+
+# Installation
+
+1. Clone the repository to your local machine
+2. Create a virtual env to avoid issues between versions using `python -m venv name_env`
+3. Activate virtual env and run `pip install -r requirements.txt`
+4. Go to the examples section and modify the .env file with your own data to start interacting with MT5.
+
+<i>Note: You need to have a terminal of Metatrader 5 in your computer to work.</i>
+
+# Introduction
+<p>This module use the Metatatrader5 library to connect with the platform, the functions were adapted to launch operations with own parameters and conditions.To know more information about the functions of Metatrade 5, please refer the next documentation:<br> 
 https://www.mql5.com/en/docs/integration/python_metatrader5 </p>
 
 <p>Next you can read more about each function and how to implement it.</p>
-
-
 
 # MT5
 
 This class is a wrapper for the MT5 library that contains all related methods to interact with Metatrader 5 such as: 
 
-<li>Stablish Connection</li>
+<li>Create Connection</li>
 <li>Retrieve data</li>
 <li>Open Trades</li>
 <li>Close Trades</li>
@@ -99,9 +62,9 @@ This class is a wrapper for the MT5 library that contains all related methods to
 
 ### Parameters
 <ol>
-<li>User --> int</li>
-<li>Password --> str</li>
-<li>Server --> str</li>
+<li>User (int) --> Account Id</li>
+<li>Password (str) --> Password of the Account</li>
+<li>Server (str) --> Server of the Account</li>
 </ol>
 
 ### Example:
@@ -111,12 +74,12 @@ This class is a wrapper for the MT5 library that contains all related methods to
     server = "MetaQuotes-Demo"
     conn = MT5(user,password,server)
 
-<i>Note: By default the contructor method call the start method to start the connection to the MT5 server</i>
+<i>Note: By default the contructor method call the start method to start the connection to the MT5 server which will open the terminal of MT5.</i>
 </p>
 
 
 ## start()
-<p>Stablish a connection to the Metatrader5 server.<br>
+<p>Create a connection to the Metatrader 5 server.<br>
 
 ### Example:
     
@@ -135,36 +98,36 @@ This class is a wrapper for the MT5 library that contains all related methods to
 
 
 ## account_details(show=0)
-<p>Return an object of type AccountInfo from Metatrader5 library. <br>
-<i>Note: Method don't display info by default pass 1 as arg to print to the console.</i><br>
+<p>Return an object of type AccountInfo from Metatrader 5 library that contains all the information related to the account. <br>
+
+<i>Note: If you want to print the info pass 1 as and argument.</i><br>
 
 ### Example:
 
-    #Display object with attributes
-    conn.account_details()
+    # Display object with attributes
+    conn.account_details(1)
 <br>
 
-    # Save balance attribute
+    # Save balance into a variable
     balance = conn.account_details().balance
 
 </p>
 
-## display_symbols(elements,spread=10)
+## display_symbols(keyword,spread=30)
 
 ### Parameters
 <ol>
-    <li>elements --> list</li>
-    <li>spread --> int</li>
+    <li>keyword (list) --> Keywords to match the symbols.</li>
+    <li>spread (int) --> Maximum value of spread of the symbols.</li>
 </ol>
 
-<p>Display symbols that follows the criteria passed (spread, keyword symbol). <br>
+<p>The method will return a DataFrame with most relevant data of the symbols that satisfy the criteria.. <br>
 
-This method by default filter spread less than 10 and return a list with the symbols information.<br>
 
 ### Example:
     
-    #Filter the symbols that contains "EUR" and spread less than 5 
-    symbols = conn.display_symbols(["EUR"],5)    
+    # Filter the symbols that contains "EUR" or "USD" and the spread value is less than 30
+    symbols = conn.display_symbols(["EUR","USD"],30)    
 </p>
 
 
@@ -173,19 +136,19 @@ This method by default filter spread less than 10 and return a list with the sym
 ### Parameters
 
 <ol>
-    <li>symbol: Name of the symbol exactly as in the broker appears --> str</li>
-    <li>operation: BUY(1), SELL(0) --> int</li>
-    <li>lot: Size of the operation to open --> int </li>
-    <li>points: --> list/str</li>
-        <ul>a) Number of points to set the SL and TP from the entry poitnt, points are calculated automatically based on the symbol.</ul>
-        <ul>b) [SL,TP] a list with the specific price where the SL and TP should be set.</ul>
+    <li>symbol (str) --> Name of the symbol exactly as in the broker appears</li>
+    <li>operation (int) --> BUY(1) / SELL(0) </li>
+    <li>lot (int) --> Size of the operation to open </li>
+    <li>points (int) or (list)</li>
+        <ul>a) Number of points to set the SL and TP from the entry price. This will follow 1:1 ratio.</ul>
+        <ul>b) [SL,TP] a list with the specific values of the price where the SL and TP should be set.</ul>
     <li>comment: Comment displayed in the MT5 console.</li>
 </ol>
 <br>
 
 <p>This method create and send a request to execute the position with the input parameters.<br>
 
-<i><b>Note: Use the display_symbols() to retrive the name and pass it correctly.</b></i></p>
+<i><b>Note: Use the display_symbols() to retrive the right name of the symbol.</b></i></p>
 
 
 ### Example: 
@@ -195,14 +158,12 @@ This method by default filter spread less than 10 and return a list with the sym
     order_id = conn.open_position("EURUSD",0,0.2,40,"This trade was executed from my code")    
 </p>
 
-## get_positions(show,symbol,id)
+## get_positions(symbol=None)
 
 ### Parameters
 
-<ol>
-    <li>show: Display message in the console --> int</li>
-    <li>symbol: Get trades info with symbol passed --> str</li>
-    <li>id: Get trade info with the ID passed --> str</li>
+<ol>    
+    <li>symbol (str) --> Get trades info exclusively of the symbol passed </li>    
 </ol>
 
 <p>Returns a pandas dataframe with trades open if exists.
@@ -213,41 +174,37 @@ This method by default filter spread less than 10 and return a list with the sym
     df = conn.get_positions()   
 </p>
 
-## close_position(ticket,type_order)
+## close_position(ticket, comment="Close", display=False)
 
 ### Parameters
 
 <ol>    
-    <li>ticket: ID of the trade --> str </li>   
-    <li>comment: Comment to sent (Close by default) --> str</li>
+    <li>ticket (int) --> Ticket number of the trade to close </li>   
+    <li>comment (str) --> Comment to add to the order.</li>
 </ol>
 
 <p>This method create and send the request to close the position with passed args.<br>
 
-To get the required args we can use the [get_positions](#get_positionsshowsymbolid) method and select one of the current open positions from the dataFrame or manually pass.
-<br>
 
 ### Examples:
-<b>Assigning the values from the columns to variables</b>
-   
-    df = conn.get_positions()
-    type_ord = df["type"].iloc[0]
-    ticket = df["ticket"].iloc[0]
-    symbol = df["symbol"].iloc[0]
-    volume = df["volume"].iloc[0]
+       
     
-    # Passing the data to the method
-    conn.close_position(symbol,ticket,type_ord,volume,"Trade closed from my code")  
+    ticket_id = 12345
+
+    conn.close_position(ticket_id,"Trade closed from my code")  
 
 ## get_data(symbol, temp, n_periods, plot=0)
 
 ### Parameters
 
 <ol>
-    <li>symbol:Name of the symbol --> str</li>
-    <li>temp: TimeFrame to get data (M1,M3,H1) --> str </li>
-    <li>n_periods: Number of candles to get from current time (Current time - n_periods) --> int </li>
-    <li>plot: Display a chart in japanese format (1 - Display) --> int </li>
+    <li>symbo (str) --> Name of the symbol</li>
+    <li>temp (str) --> TimeFrame to get data (M1,M3,H1, etc)</li>
+    <li>n_periods (int) --> Number of bars to get from current time (Current time - n_periods)</li>
+    <li>plot (int) --> Display a chart in japanese format 
+    <ul>1 - Plot the DataFrame</ul>
+    <ul>0 - Only returns the DataFrame (default) </ul>
+    </li>
 </ol>
 
 ### Example:
@@ -280,228 +237,3 @@ In this example the name of the stock was manually passed, remember use the apro
 <b>Profit from a trade in EURUSD symbol</b>
    
     profit = MT5.calculate_profit("EURUSD",40,0.1,0)
-    
-
-
-# Technical 
-Contains multiple types of technical analysis, it is based in TA-Lib and modified for personal use with extra features.
-
-To know more information about the functions of TA-Lib, please refer the next documentation:
-https://mrjbq7.github.io/ta-lib/index.html
-
-
-## Constructor method
-
-To start applying technical analysis an object with a dataFrame needs to be created, you can passed any pandas dataFrame that follow the same format as the [get_data](#get_datasymbol-temp-n_periods-plot0) method from the [MT5 Class](#mt5-class).
-
-
-### Example: 
-        
-    Technical =  Technical(df)
-
-## get_bars_direction(lenght)
-
-### Parameters
-<ol>
-    <li>lenght: Number of periods to use to determine the trend. -- > int</li>
-</ol>
-
-Determine the direction of each bar from the dataFrame based on the open and close price and return a list.
-
-### Example:
-
-    # Get the direction from the last 50 bars
-    trend = Technical.get_bar_direction(50)
-
-## EMA(entry = "close", period = 12, deviation=-1)
-
-Calculate the values for an exponential moving average, by default is set up to 12 periods and  it is based in close price.
-
-### Parameters
-
-<ol>
-    <li>entry: Column to perform calculation values. --> str</li>
-    <li>period: Number of periods to perform the calculation. --> int </li>
-    <li>deviation: Offset used to perfomr calculation --> int </li>    
-</ol>
-
-
-### Example: 
-        
-    EMA = Technical.EMA("open","100")
-
-## SMA(entry = "close", period = 12, deviation=-1)
-
-Calculate the values for a simple moving average, by default is set up to 12 periods and  it is based in close price.
-
-### Parameters
-
-<ol>
-    <li>entry: Column to perform calculation values. --> str</li>
-    <li>period: Number of periods to perform the calculation. --> int </li>
-    <li>deviation: Offset used to perfomr calculation --> int </li>    
-</ol>
-
-
-### Example: 
-        
-    SMA = Technical.SMA("open","100")
-
-## calculate_middle_price(period=10)
-
-### Parameters
-<ul>
-     <li>period: Number of periods to perform the calculation. --> int </li>
-</ul>
-
-### Example:
-
-    middle_price = Technical.calculate_middle_price(20)
-
-## calculate_roc(entry="open", period=8)
-
-### Parameters
-<ul>
-     <li>period: Number of periods to perform the calculation. --> int </li>
-</ul>
-
-### Example:
-
-    roc = Technical.calculate_roc("close",20)
-
-## calculate_avg_price()
-
-Calculates the average price for all the time in the dataFrame passed when the object was created.
-
-### Example:
-
-    avg_price = Technical.calculate_avg_price()
-
-## get_previous_bar_trend()
-
-Return the trend from the previous bar based in open and close values.
-
-### Example
-
-    previous_bar_direction = Technical.get_previous_bar_trend()
-
-## get_current_bar_trend()
-
-Return the current trend from the current bar based in open and close values.
-
-### Example
-
-    current_bar_direction = Technical.get_current_bar_trend()
-
-## calculate_trend_by_bars_trend(n_periods=0)
-
-### Parameters
-<ul>
-    <li>n_periods: Number of periods used to determine trend. --> int </li>
-</ul>
-
-Determine the trend based on the direction of each bar for the selected window of periods. 
-
-<i>Note: By default (0) takes all available bars.</i>
-
-### Example
-
-    trend = Technical.calculate_trend_by_bars_trend()
-
-## calculate_trend_by_trendline(n_periods=0)
-
-### Parameters
-<ul>
-    <li>n_periods: Number of periods used to determine trend. --> int </li>
-</ul>
-
-Determine the trend tracing a line from the first and last bar for the window of period selected. 
-
-<i>Note: By default (0) takes all available bars.</i>
-
-### Example
-
-    trend = Technical.calculate_trend_by_trendline()
-
-## calculate_chopiness_index(lookback=6)
-
-### Parameters
-<ul>
-    <li>lookback: Number of periods to rolling. --> int</li>    
-</ul>
-
-Calculate the Chopiness Index value for each period of time to determine when market is on trending.
-
-### Example
-
-    chop = Technical.calculate_chopiness_index(12)
-
-## calculate_trend_angle(n_periods=50)
-
-### Parameters
-<ul>
-    <li>n_periods: Number of periods used to calculate the angle. --> int </li>
-</ul>
-
- Calculate the angle of the current trend from the selected window of time.
-### Example:
-
-    angle = Technical.calculate_trend_angle(20)
-
- ## get_lowest_and_highest(lenght=10)
-
- ### Parameters
-<ul>
-    <li>lenght: Number of periods used to get values. --> int </li>
-</ul>
-
- Calculate the lowest and highest values for a window of time.
-
-### Example:
-
-    lowest, highest = Technical.get_lowest_and_highest(30)
-
-## calculate_super_trend(atr_period=15, multiplier=3)
-
-### Parameters
-<ol>
-<li>atr_period: Number of periods to take to perform the ATR calculation --> int</li>
-<li>multiplier: Multiplier to take to perform the calculation --> float</li>
-</ol>
-
- Calculate super trend indicator values and return the direction.
-
-### Example:
-
-    trend_by_super_trend = Technical.calculate_super_trend(10,.5)
-
-
-# Live Trading
-
-This class contains the strategy implementations in a Live Trading mode.
-
-## On Tick
-This method is used to replicate each movement in the market, every time the market has a movement, the on tick method call the logic inside of it and look for entries.
-
-### Parameters:
-<ul>
-<li>mt5_connection (MT5 Class): Object created with the connection to the MT5 server</li>
-<li>symbol (str): Name of the symbol to execute the strategy</li>
-<li>user_parameters (dict): Dictionary with key values options for Strategy selected</li>
-    <ul>
-    <li>profit (float): Target profit for session</li>
-    <li>loss (float): Maximum loss per session</li>
-    <li>max_trades (int): Max number of trades to open per session</li>
-    <li>dynamic_points (boolean): Determine SL / TP automatically.</li>
-    <li>points (int): Set SL / TP based on user parameters</li>
-    </ul>
-</ul>
-
-
-
-
-
-
-
-
-

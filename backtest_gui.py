@@ -3,6 +3,8 @@ from Classes.data_operations import *
 from Classes.Strategies import *
 from Classes.backtest import *
 from lightweight_charts import Chart
+from dotenv import load_dotenv
+from os import environ
 
 operation_line = None
 id_mapping = {}
@@ -146,11 +148,11 @@ def click(row):
 if __name__ == '__main__':
 
     # START CONNECTION
-    user = 3000063681
-    password = "821AZ!$p5x"
-    server = "demoUK-mt5.darwinex.com"
+    user = int(environ.get("USER_DEMO"))
+    password = environ.get("PASSWORD_DEMO")
+    server = environ.get("SERVER_DEMO")
     conn = MT5(user, password, server)
-    n_periods = 1000
+    n_periods = 2000
     symbol = "XAUUSD"
     # best_settings = optimize_strategy(conn, n_periods, symbol)
     # Start backtest to get the trades
@@ -162,7 +164,7 @@ if __name__ == '__main__':
                                         use_random_forest=False,  # best_settings['randomForest'],
                                         volume_filter=False,
                                         reverse_entries=True,
-                                        depth=30
+                                        depth=100
                                         )
     if trades is None:
         print("No entries")

@@ -241,7 +241,7 @@ def start_strategy_mt5_screen(frame):
     PADX = (0,40)
     PADY = 2.5
     connection = frame.connection    
-    symbols = connection.display_symbols(["XAUUSD"], 50)
+    symbols = connection.display_symbols(["XAUUSD"], 1000)
     
     # Define Tkinter variables to update the GUI
     frame.risk = tk.StringVar(value="0.5%")
